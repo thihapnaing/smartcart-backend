@@ -1,16 +1,10 @@
-# Compiled class file
+# ==========================================
+# Compiled & Package Files
+# ==========================================
 *.class
-
-# Log file
 *.log
-
-# BlueJ files
 *.ctxt
-
-# Mobile Tools for Java (J2ME)
 .mtj.tmp/
-
-# Package Files #
 *.jar
 *.war
 *.nar
@@ -18,7 +12,48 @@
 *.zip
 *.tar.gz
 *.rar
-
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+
+# ==========================================
+# Maven & Spring Boot
+# ==========================================
+target/
+!.mvn/wrapper/maven-wrapper.jar
+*.logs
+
+# Local environment / Secret config overrides
+application-local.properties
+application-local.yml
+.env
+
+# ==========================================
+# IDEs & Editors (IntelliJ, Eclipse, VS Code)
+# ==========================================
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+cmake-build-*/
+
+# Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache
+bin/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# ==========================================
+# System & OS Files
+# ==========================================
+.DS_Store
+Thumbs.db

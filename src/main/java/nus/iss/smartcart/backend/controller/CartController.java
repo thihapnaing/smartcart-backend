@@ -26,4 +26,9 @@ public class CartController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
 
     }
+    @GetMapping
+    public ResponseEntity<CartItemsResponse> getCart() {
+        Long userId = 2L; //to replace with authenticated user once auth is implemented
+        return ResponseEntity.ok(cartService.getCart(userId));
+    }
 }

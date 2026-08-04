@@ -25,4 +25,10 @@ public class OrderController {
         CheckoutResponse response  = orderService.checkout(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<CheckoutResponse> getOrderDetail(@PathVariable Long id) {
+        Long userId = 2L; //replace with authenticated user once auth is implemented
+        return ResponseEntity.ok(orderService.getOrderDetail(id, userId));
+    }
 }

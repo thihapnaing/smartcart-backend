@@ -107,6 +107,8 @@ public class CartService {
                 .unitPrice(unitPrice)
                 .quantity(item.getQuantity())
                 .subtotal(subTotal)
+                .gender(item.getProductVariant().getProduct().getGender().name())
+                .categoryName(item.getProductVariant().getProduct().getCategory().getName())
                 .build();
     }
 

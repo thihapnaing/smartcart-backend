@@ -114,6 +114,8 @@ public class OrderService {
                 .unitPrice(orderItem.getUnitPrice())
                 .quantity(orderItem.getQuantity())
                 .subtotal(orderItem.getUnitPrice().multiply(BigDecimal.valueOf(orderItem.getQuantity())))
+                .gender(orderItem.getProductVariant().getProduct().getGender().name())
+                .categoryName(orderItem.getProductVariant().getProduct().getCategory().getName())
                 .build();
     }
 

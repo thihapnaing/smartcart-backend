@@ -1,6 +1,7 @@
 package nus.iss.smartcart.backend.controller;
 import nus.iss.smartcart.backend.dto.ProductDetailResponse;
 import nus.iss.smartcart.backend.dto.ProductSearchResult;
+import nus.iss.smartcart.backend.model.Gender;
 import nus.iss.smartcart.backend.service.ProductService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +22,21 @@ public class ProductController {
     @GetMapping("/search")
     public ResponseEntity<List<ProductSearchResult>> searchProductsByKeyword(@RequestParam String keyword) {
         return ResponseEntity.ok(productService.searchByKeyword(keyword));
+    }
+
+    // Author: Htet Nandar (Grace)
+    /**
+     * Filtered/sorted search used by the AI chat's tool calls and the "New arrivals" suggestion chip.
+     * All params optional; newestFirst=true sorts by createdAt desc for "new arrivals"/"what's new".
+     */
+    @GetMapping("/browse")
+    public ResponseEntity<List<ProductSearchResult>> browse(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Gender gender,
+            @RequestParam(defaultValue = "false") boolean newestFirst,
+            @RequestParam(defaultValue = "20") int limit) {
+        return ResponseEntity.ok(productService.search(keyword, category, gender, newestFirst, limit));
     }
 
     @GetMapping("/{id}")

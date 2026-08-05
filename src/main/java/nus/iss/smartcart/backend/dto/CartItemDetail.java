@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 public class CartItemDetail {
 
     private Long cartItemId;
+    private Long productVariantId; // Author: Htet Nandar (Grace)
     private String productName;
     private String imageUrl;
     private String size;

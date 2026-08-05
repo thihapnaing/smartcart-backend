@@ -57,14 +57,6 @@ public class CartService {
     }
 
     // Author: Htet Nandar (Grace)
-    /** Backs the nav bar's cart badge and the stepper's initial quantity - fetches without mutating. */
-    @Transactional
-    public CartItemsResponse getCart(Long userId) {
-        Cart cart = getOrCreateCart(userId);
-        return buildCartResponse(cart.getId());
-    }
-
-    // Author: Htet Nandar (Grace)
     /**
      * Sets a cart_item's quantity to an exact value - backs the stepper's +/- buttons.
      * A quantity of 0 or less removes the row instead of leaving a zero-quantity item.

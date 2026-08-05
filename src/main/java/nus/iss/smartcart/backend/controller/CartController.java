@@ -2,6 +2,7 @@ package nus.iss.smartcart.backend.controller;
 
 import nus.iss.smartcart.backend.dto.AddToCartRequest;
 import nus.iss.smartcart.backend.dto.CartItemsResponse;
+import nus.iss.smartcart.backend.dto.UpdateCartItemRequest;
 import nus.iss.smartcart.backend.service.CartService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,5 +31,13 @@ public class CartController {
     public ResponseEntity<CartItemsResponse> getCart() {
         Long userId = 2L; //to replace with authenticated user once auth is implemented
         return ResponseEntity.ok(cartService.getCart(userId));
+    }
+
+    // Author: Htet Nandar (Grace)
+    /** Backs the quantity stepper's +/- buttons. Quantity <= 0 removes the row. */
+    @PatchMapping("/items/{cartItemId}")
+    public ResponseEntity<CartItemsResponse> updateQuantity(@PathVariable Long cartItemId, @RequestBody UpdateCartItemRequest request) {
+        Long userId = 2L; //replace with authenticated user once implemented
+        return ResponseEntity.ok(cartService.updateQuantity(userId, cartItemId, request.getQuantity()));
     }
 }

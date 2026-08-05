@@ -1,7 +1,6 @@
 package nus.iss.smartcart.backend.controller;
 
 import nus.iss.smartcart.backend.dto.UserProfileForDeliveryDetails;
-import nus.iss.smartcart.backend.model.UserProfile;
 import nus.iss.smartcart.backend.service.UserProfileService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;

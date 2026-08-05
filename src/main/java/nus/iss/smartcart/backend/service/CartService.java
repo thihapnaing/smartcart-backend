@@ -33,6 +33,15 @@ public class CartService {
         this.userRepository = userRepository;
     }
 
+    @Transactional(readOnly = true)
+    public CartItemsResponse getCart(Long userId) {
+        Optional<Cart> cartOpt = cartRepository.findByUserId(userId);
+        if(cartOpt.isEmpty()) {
+            return new CartItemsResponse(List.of(), BigDecimal.ZERO);
+        }
+        return buildCartResponse(cartOpt.get().getId());
+    }
+
     @Transactional
     public CartItemsResponse addToCart(Long userId, Long productVariantId, Integer quantity) {
         int qty = (quantity != null) ? quantity : 1;
@@ -136,6 +145,8 @@ public class CartService {
                 .unitPrice(unitPrice)
                 .quantity(item.getQuantity())
                 .subtotal(subTotal)
+                .gender(item.getProductVariant().getProduct().getGender().name())
+                .categoryName(item.getProductVariant().getProduct().getCategory().getName())
                 .build();
     }
 

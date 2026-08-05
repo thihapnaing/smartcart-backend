@@ -53,6 +53,35 @@ public class OrderService {
         return buildCheckOutResponse(order, checkoutRequest);
     }
 
+    @Transactional(readOnly = true)
+    public CheckoutResponse getOrderDetail(Long orderId, Long userId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("Order is not found"));
+        if(!order.getUser().getId().equals(userId)) {
+            throw new EntityNotFoundException("Order not found");
+        }
+        Payment payment = paymentRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("Payment not found for this order"));
+        DeliveryDetails deliveryDetails = DeliveryDetails.builder()
+                .firstName(order.getFirstName())
+                .lastName(order.getLastName())
+                .shippingAddress(order.getShippingAddress())
+                .phoneNumber(order.getPhoneNumber())
+                .build();
+        List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
+        List<CartItemDetail> cartItemDetailList = orderItems.stream()
+                .map(this::toCartItemDetail)
+                .toList();
+        return CheckoutResponse.builder()
+                .orderId(order.getId())
+                .cartItemDetails(cartItemDetailList)
+                .totalAmount(order.getTotalAmount())
+                .orderStatus(order.getStatus())
+                .deliveryDetails(deliveryDetails)
+                .paymentMethod(payment.getPaymentMethod())
+                .build();
+    }
+
     private CheckoutResponse buildCheckOutResponse(Order order, CheckoutRequest checkoutRequest) {
         List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
         List<CartItemDetail> cartItemDetails = orderItems
@@ -86,6 +115,8 @@ public class OrderService {
                 .unitPrice(orderItem.getUnitPrice())
                 .quantity(orderItem.getQuantity())
                 .subtotal(orderItem.getUnitPrice().multiply(BigDecimal.valueOf(orderItem.getQuantity())))
+                .gender(orderItem.getProductVariant().getProduct().getGender().name())
+                .categoryName(orderItem.getProductVariant().getProduct().getCategory().getName())
                 .build();
     }
 

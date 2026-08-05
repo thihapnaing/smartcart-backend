@@ -79,6 +79,7 @@ public class OrderService {
     private CartItemDetail toCartItemDetail(OrderItem orderItem) {
         return CartItemDetail.builder()
                 .cartItemId(orderItem.getId())
+                .productVariantId(orderItem.getProductVariant().getId()) // Author: Htet Nandar (Grace)
                 .productName(orderItem.getProductVariant().getProduct().getName())
                 .imageUrl(orderItem.getProductVariant().getProduct().getImageUrl())
                 .size(orderItem.getProductVariant().getSize())

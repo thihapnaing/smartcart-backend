@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByUserId(Long userId);
+    // Author: Htet Nandar (Grace)
+    List<Order> findByUserIdOrderByOrderDateDesc(Long userId);
 }

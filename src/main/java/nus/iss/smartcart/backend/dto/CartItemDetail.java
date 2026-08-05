@@ -16,4 +16,6 @@ public class CartItemDetail {
     private BigDecimal unitPrice;
     private Integer quantity;
     private BigDecimal subtotal;
+    private String gender;
+    private String categoryName;
 }

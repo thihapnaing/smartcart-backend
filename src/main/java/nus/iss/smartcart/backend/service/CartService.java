@@ -56,6 +56,34 @@ public class CartService {
         return buildCartResponse(cart.getId());
     }
 
+    // Author: Htet Nandar (Grace)
+    /**
+     * Sets a cart_item's quantity to an exact value - backs the stepper's +/- buttons.
+     * A quantity of 0 or less removes the row instead of leaving a zero-quantity item.
+     */
+    @Transactional
+    public CartItemsResponse updateQuantity(Long userId, Long cartItemId, Integer quantity) {
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Cart not found"));
+        CartItem item = cartItemRepository.findById(cartItemId)
+                .orElseThrow(() -> new EntityNotFoundException("Cart item not found"));
+        if (!item.getCart().getId().equals(cart.getId())) {
+            throw new EntityNotFoundException("Cart item not found");
+        }
+
+        if (quantity == null || quantity <= 0) {
+            cartItemRepository.delete(item);
+        } else {
+            if (quantity > item.getProductVariant().getStock()) {
+                throw new IllegalArgumentException("Requested quantity exceeds available stock");
+            }
+            item.setQuantity(quantity);
+            cartItemRepository.save(item);
+        }
+
+        return buildCartResponse(cart.getId());
+    }
+
     private CartItemsResponse buildCartResponse(Long cartId) {
         List<CartItem> cartItems = cartItemRepository.findByCartId(cartId);
         List<CartItemDetail> cartItemDetails = cartItems.stream()
@@ -101,6 +129,8 @@ public class CartService {
         BigDecimal subTotal = unitPrice.multiply(BigDecimal.valueOf(item.getQuantity()));
         return CartItemDetail.builder()
                 .cartItemId(item.getId())
+                // Author: Htet Nandar (Grace)
+                .productVariantId(item.getProductVariant().getId())
                 .productName(item.getProductVariant().getProduct().getName())
                 .imageUrl(item.getProductVariant().getProduct().getImageUrl())
                 .size(item.getProductVariant().getSize())

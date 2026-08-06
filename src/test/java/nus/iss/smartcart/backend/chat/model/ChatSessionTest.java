@@ -24,7 +24,6 @@ class ChatSessionTest {
         onCreate.invoke(session);
 
         assertNotNull(session.getCreatedAt());
-        // Author: Htet Nandar (Grace)
         // Compared as zone-aware ZonedDateTime (not plain LocalDateTime) per Sonar java:S6355 -
         // duration/time-difference computations should use zone-aware types.
         ZonedDateTime actual = session.getCreatedAt().atZone(ZoneId.of("Asia/Singapore"));

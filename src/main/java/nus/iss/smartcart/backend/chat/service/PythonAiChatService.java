@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -52,6 +53,13 @@ public class PythonAiChatService implements ChatService {
     private static final String GREETING = "Hi! I'm your SmartCart AI assistant. I can help you find outfits, "
         + "get recommendations, and check your order history. What can I do for you today?";
 
+    // Author: Htet Nandar (Grace)
+    // Repeated Map.of("role", ..., "content", ...) literals, pulled into constants.
+    private static final String KEY_ROLE = "role";
+    private static final String KEY_CONTENT = "content";
+    private static final String ROLE_USER = "user";
+    private static final String ROLE_ASSISTANT = "assistant";
+
     private final PythonAiConfig aiConfig;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
@@ -82,7 +90,7 @@ public class PythonAiChatService implements ChatService {
         String sessionId = UUID.randomUUID().toString();
 
         List<Map<String, Object>> history = new ArrayList<>();
-        history.add(Map.of("role", "assistant", "content", GREETING));
+        history.add(Map.of(KEY_ROLE, ROLE_ASSISTANT, KEY_CONTENT, GREETING));
         sessions.put(sessionId, new SessionState(userId, history));
 
         try {
@@ -91,7 +99,7 @@ public class PythonAiChatService implements ChatService {
                 .sessionId(sessionId)
                 .user(user)
                 .build();
-            session.addMessage(ChatMessage.builder().role("assistant").content(GREETING).build());
+            session.addMessage(ChatMessage.builder().role(ROLE_ASSISTANT).content(GREETING).build());
             chatSessionRepository.save(session);
         } catch (Exception e) {
             // Persistence is best-effort - don't let a DB hiccup break the chat UX.
@@ -124,8 +132,8 @@ public class PythonAiChatService implements ChatService {
             String reply = aiResponse.has("reply") ? aiResponse.get("reply").asText() : "";
             response.setReply(reply);
 
-            state.history().add(Map.of("role", "user", "content", message));
-            state.history().add(Map.of("role", "assistant", "content", reply));
+            state.history().add(Map.of(KEY_ROLE, ROLE_USER, KEY_CONTENT, message));
+            state.history().add(Map.of(KEY_ROLE, ROLE_ASSISTANT, KEY_CONTENT, reply));
             persistExchange(sessionId, state.userId(), message, reply);
 
             JsonNode productsNode = aiResponse.get("products");
@@ -134,6 +142,13 @@ public class PythonAiChatService implements ChatService {
                     objectMapper.convertValue(productsNode, List.class);
                 response.setProducts(toProductDtos(productsRaw));
             }
+        } catch (InterruptedException e) {
+            // Restore the interrupt flag instead of swallowing it, per Sonar S2142 - the thread
+            // was told to stop, so callers up the stack need to see that signal too.
+            Thread.currentThread().interrupt();
+            log.error("Call to smartcart-ai-service was interrupted for session {}", sessionId, e);
+            response.setReply("Sorry, I couldn't reach the AI assistant just now - make sure "
+                + "smartcart-ai-service is running at " + aiConfig.getBaseUrl() + ". Please try again in a moment.");
         } catch (Exception e) {
             log.error("Call to smartcart-ai-service failed for session {}", sessionId, e);
             response.setReply("Sorry, I couldn't reach the AI assistant just now - make sure "
@@ -153,15 +168,18 @@ public class PythonAiChatService implements ChatService {
                 return chatSessionRepository.save(
                     ChatSession.builder().sessionId(sessionId).user(user).build());
             });
-            session.addMessage(ChatMessage.builder().role("user").content(userMessage).build());
-            session.addMessage(ChatMessage.builder().role("assistant").content(assistantReply).build());
+            session.addMessage(ChatMessage.builder().role(ROLE_USER).content(userMessage).build());
+            session.addMessage(ChatMessage.builder().role(ROLE_ASSISTANT).content(assistantReply).build());
             chatSessionRepository.save(session);
         } catch (Exception e) {
             log.error("Failed to persist chat exchange for session {}", sessionId, e);
         }
     }
 
-    private JsonNode callPythonChat(String sessionId, String message, SessionState state) throws Exception {
+    // Author: Htet Nandar (Grace)
+    // Declares the specific checked exceptions HttpClient.send() actually throws (IOException,
+    // InterruptedException), not a blanket "throws Exception" that hides what can really fail.
+    private JsonNode callPythonChat(String sessionId, String message, SessionState state) throws IOException, InterruptedException {
         ObjectNode body = objectMapper.createObjectNode();
         body.put("session_id", sessionId);
         body.put("message", message);
@@ -185,7 +203,7 @@ public class PythonAiChatService implements ChatService {
         HttpResponse<String> httpResponse = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (httpResponse.statusCode() != 200) {
-            throw new RuntimeException(
+            throw new AiServiceException(
                 "AI service error: HTTP " + httpResponse.statusCode() + " - " + httpResponse.body());
         }
 

@@ -20,6 +20,7 @@ import lombok.Setter;
 import lombok.ToString;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 /**
  * One message (either the user's or the assistant's) inside a {@link ChatSession}. `role` mirrors
@@ -54,8 +55,10 @@ public class ChatMessage {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    // Explicit zone (matches docker-compose's Singapore timezone) instead of the JVM's
+    // implicit default, so createdAt doesn't silently shift if the host's TZ ever differs.
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now(ZoneId.of("Asia/Singapore"));
     }
 }

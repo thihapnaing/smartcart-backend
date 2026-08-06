@@ -5,11 +5,12 @@ package nus.iss.smartcart.backend.chat.model;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
-import java.time.LocalDateTime;
+import java.time.Duration;
 import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
+import java.time.ZonedDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ChatSessionTest {
@@ -23,8 +24,12 @@ class ChatSessionTest {
         onCreate.invoke(session);
 
         assertNotNull(session.getCreatedAt());
-        LocalDateTime expectedNow = LocalDateTime.now(ZoneId.of("Asia/Singapore"));
-        assertTrue(Math.abs(ChronoUnit.SECONDS.between(session.getCreatedAt(), expectedNow)) < 5,
+        // Author: Htet Nandar (Grace)
+        // Compared as zone-aware ZonedDateTime (not plain LocalDateTime) per Sonar java:S6355 -
+        // duration/time-difference computations should use zone-aware types.
+        ZonedDateTime actual = session.getCreatedAt().atZone(ZoneId.of("Asia/Singapore"));
+        ZonedDateTime expectedNow = ZonedDateTime.now(ZoneId.of("Asia/Singapore"));
+        assertTrue(Duration.between(actual, expectedNow).abs().getSeconds() < 5,
             "createdAt should reflect the current time in Asia/Singapore");
     }
 
@@ -36,6 +41,6 @@ class ChatSessionTest {
         session.addMessage(message);
 
         assertTrue(session.getMessages().contains(message));
-        assertTrue(message.getSession() == session);
+        assertSame(session, message.getSession());
     }
 }

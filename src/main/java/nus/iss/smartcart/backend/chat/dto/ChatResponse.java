@@ -15,6 +15,7 @@ public class ChatResponse {
     private List<ProductSummaryDto> products;
     private List<String> suggestions;
 
+    // Required by Jackson to serialize/deserialize this DTO - fields are set via reflection.
     public ChatResponse() {}
 
     public String getSessionId() { return sessionId; }

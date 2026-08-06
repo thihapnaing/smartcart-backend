@@ -7,6 +7,7 @@ public class ChatRequest {
 
     private String message;
 
+    // Required by Jackson to deserialize the JSON request body - fields are set via reflection.
     public ChatRequest() {}
 
     public String getMessage() { return message; }

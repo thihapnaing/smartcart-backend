@@ -20,6 +20,7 @@ public class ProductSummaryDto {
     /** First variant's id - lets the "+ Add" button skip size selection for a single default variant. */
     private Long defaultVariantId;
 
+    // Required by Jackson to deserialize the JSON smartcart-ai-service sends - fields are set via reflection.
     public ProductSummaryDto() {}
 
     public Long getProductId() { return productId; }

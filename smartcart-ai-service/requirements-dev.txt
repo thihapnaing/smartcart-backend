@@ -1,0 +1,7 @@
+-r requirements.txt
+
+# Author: Htet Nandar (Grace)
+# Test-only dependencies. httpx is required by fastapi.testclient.TestClient; async tests use
+# plain asyncio.run() instead of pytest-asyncio to keep this list minimal.
+pytest>=8.0.0
+httpx>=0.27.0

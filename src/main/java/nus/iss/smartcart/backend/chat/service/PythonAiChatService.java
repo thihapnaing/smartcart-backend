@@ -142,6 +142,13 @@ public class PythonAiChatService implements ChatService {
                     objectMapper.convertValue(productsNode, List.class);
                 response.setProducts(toProductDtos(productsRaw));
             }
+        } catch (InterruptedException e) {
+            // Restore the interrupt flag instead of swallowing it, per Sonar S2142 - the thread
+            // was told to stop, so callers up the stack need to see that signal too.
+            Thread.currentThread().interrupt();
+            log.error("Call to smartcart-ai-service was interrupted for session {}", sessionId, e);
+            response.setReply("Sorry, I couldn't reach the AI assistant just now - make sure "
+                + "smartcart-ai-service is running at " + aiConfig.getBaseUrl() + ". Please try again in a moment.");
         } catch (Exception e) {
             log.error("Call to smartcart-ai-service failed for session {}", sessionId, e);
             response.setReply("Sorry, I couldn't reach the AI assistant just now - make sure "

@@ -63,7 +63,7 @@ class PythonAiChatServiceTest {
     }
 
     @Test
-    void handleMessage_returnsReplyAndPersistsExchange_whenAiServiceRespondsSuccessfully() throws IOException {
+    void handleMessage_returnsReplyAndPersistsExchange_whenAiServiceRespondsSuccessfully() {
         server.createContext("/api/chat", exchange -> {
             byte[] bytes = "{\"reply\":\"Here are some picks for you\",\"products\":[]}"
                 .getBytes(StandardCharsets.UTF_8);
@@ -84,7 +84,7 @@ class PythonAiChatServiceTest {
     }
 
     @Test
-    void handleMessage_returnsFriendlyFallback_whenAiServiceReturnsNon200() throws IOException {
+    void handleMessage_returnsFriendlyFallback_whenAiServiceReturnsNon200() {
         server.createContext("/api/chat", exchange -> {
             byte[] bytes = "boom".getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(500, bytes.length);

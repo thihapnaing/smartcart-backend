@@ -13,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Backs the /internal/tools/** endpoints that smartcart-ai-service's MCP tools call into. This
@@ -66,7 +65,7 @@ public class ToolDataService {
                 m.put("orderDate", o.getOrderDate() != null ? o.getOrderDate().toString() : null);
                 return m;
             })
-            .collect(Collectors.toList());
+            .toList();
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("topCategory", topCategory);
@@ -98,7 +97,7 @@ public class ToolDataService {
                 m.put("defaultVariantId", p.getDefaultVariantId());
                 return m;
             })
-            .collect(Collectors.toList());
+            .toList();
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("products", products);

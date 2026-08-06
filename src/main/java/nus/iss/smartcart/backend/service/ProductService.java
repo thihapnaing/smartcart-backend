@@ -7,8 +7,6 @@ import nus.iss.smartcart.backend.model.Gender;
 import nus.iss.smartcart.backend.model.Product;
 import nus.iss.smartcart.backend.model.ProductVariant;
 import nus.iss.smartcart.backend.repository.ProductRepository;
-import nus.iss.smartcart.backend.repository.ProductVariantRepository;
-import nus.iss.smartcart.backend.repository.UserProfileRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,12 +17,9 @@ import java.util.List;
 public class ProductService {
 
     private final ProductRepository productRepository;
-    private final ProductVariantRepository productVariantRepository;
 
-    public ProductService(ProductRepository productRepository,
-                          UserProfileRepository userProfileRepository, ProductVariantRepository productVariantRepository) {
+    public ProductService(ProductRepository productRepository) {
         this.productRepository = productRepository;
-        this.productVariantRepository = productVariantRepository;
     }
 
     @Transactional

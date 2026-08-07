@@ -1,10 +1,12 @@
 package nus.iss.smartcart.backend.controller;
+import nus.iss.smartcart.backend.dto.ImageSearchProductResponse;
 import nus.iss.smartcart.backend.dto.ProductDetailResponse;
 import nus.iss.smartcart.backend.dto.ProductSearchResult;
 import nus.iss.smartcart.backend.model.Gender;
 import nus.iss.smartcart.backend.service.ProductService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -37,6 +39,18 @@ public class ProductController {
             @RequestParam(defaultValue = "false") boolean newestFirst,
             @RequestParam(defaultValue = "20") int limit) {
         return ResponseEntity.ok(productService.search(keyword, category, gender, newestFirst, limit));
+    }
+
+    //author: Junior
+    @PostMapping("/image-search")
+    public ResponseEntity<List<ImageSearchProductResponse>> imageSearch(
+            @RequestParam("file") MultipartFile file
+    ) {
+
+        return ResponseEntity.ok(
+                productService.imageSearch(file)
+        );
+
     }
 
     @GetMapping("/{id}")

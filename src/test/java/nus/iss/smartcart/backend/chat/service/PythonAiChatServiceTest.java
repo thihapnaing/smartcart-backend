@@ -25,6 +25,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -179,5 +180,71 @@ class PythonAiChatServiceTest {
 
         assertNotNull(response.getReply());
         assertTrue(response.getReply().contains("Here you go"));
+    }
+
+    // ── Remaining partial-branch coverage (SonarCloud condition coverage) ──
+
+    @Test
+    void handleMessage_defaultsToEmptyReply_whenAiResponseHasNoReplyField() {
+        // Covers the false branch of aiResponse.has("reply") ? ... : "" - every other test's
+        // fixture JSON always includes a "reply" key, so that branch was never exercised.
+        stubJsonReply("/api/chat", 200, "{}");
+        when(chatSessionRepository.findBySessionId("session-6")).thenReturn(Optional.empty());
+        when(chatSessionRepository.save(any(ChatSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ChatResponse response = service.handleMessage("session-6", "Show me new arrivals");
+
+        assertEquals("", response.getReply());
+    }
+
+    @Test
+    void handleMessage_skipsProducts_whenProductsFieldIsNotAnArray() {
+        // Covers the false branch of productsNode.isArray() - existing tests either omit
+        // "products" entirely or send a real array, never a non-array value.
+        stubJsonReply("/api/chat", 200, "{\"reply\":\"Here you go\",\"products\":{\"not\":\"an array\"}}");
+        when(chatSessionRepository.findBySessionId("session-7")).thenReturn(Optional.empty());
+        when(chatSessionRepository.save(any(ChatSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ChatResponse response = service.handleMessage("session-7", "Show me new arrivals");
+
+        assertNotNull(response.getReply());
+        assertNull(response.getProducts());
+    }
+
+    @Test
+    void handleMessage_mapsProductWithMissingOptionalFieldsToNulls() {
+        // Covers the false (null) branch of each ternary in toProductDtos - the earlier
+        // products test only ever sent a product with every field populated.
+        stubJsonReply("/api/chat", 200, "{\"reply\":\"Here you go\",\"products\":["
+            + "{\"productId\":7,\"defaultVariantId\":9}]}");
+        when(chatSessionRepository.findBySessionId("session-8")).thenReturn(Optional.empty());
+        when(chatSessionRepository.save(any(ChatSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ChatResponse response = service.handleMessage("session-8", "Show me new arrivals");
+
+        assertEquals(1, response.getProducts().size());
+        assertEquals(7L, response.getProducts().get(0).getProductId());
+        assertEquals(9L, response.getProducts().get(0).getDefaultVariantId());
+        assertNull(response.getProducts().get(0).getName());
+        assertNull(response.getProducts().get(0).getPrice());
+        assertNull(response.getProducts().get(0).getImageUrl());
+        assertNull(response.getProducts().get(0).getCategory());
+    }
+
+    @Test
+    void handleMessage_mapsProductWithMissingIdFieldsToNulls() {
+        // Covers the false (null) branch of the productId and defaultVariantId ternaries -
+        // every other products test always sends both ids, so that branch was never exercised.
+        stubJsonReply("/api/chat", 200, "{\"reply\":\"Here you go\",\"products\":["
+            + "{\"name\":\"Tee\",\"price\":19.99,\"imageUrl\":\"http://x/tee.jpg\",\"category\":\"Tops\"}]}");
+        when(chatSessionRepository.findBySessionId("session-9")).thenReturn(Optional.empty());
+        when(chatSessionRepository.save(any(ChatSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ChatResponse response = service.handleMessage("session-9", "Show me new arrivals");
+
+        assertEquals(1, response.getProducts().size());
+        assertEquals("Tee", response.getProducts().get(0).getName());
+        assertNull(response.getProducts().get(0).getProductId());
+        assertNull(response.getProducts().get(0).getDefaultVariantId());
     }
 }

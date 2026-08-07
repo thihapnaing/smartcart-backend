@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS category (
     PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS `user` (
+CREATE TABLE IF NOT EXISTS `smartcart_user` (
     id BIGINT NOT NULL,
     username VARCHAR(255),
     email VARCHAR(255),
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS `user` (
     PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS user_profile (
+CREATE TABLE IF NOT EXISTS smartcart_user_profile (
     id BIGINT NOT NULL,
     user_id BIGINT,
     first_name VARCHAR(255),

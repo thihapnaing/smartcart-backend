@@ -26,7 +26,7 @@ INSERT INTO category (id, name) VALUES
 -- Users (password is the bcrypt-less placeholder 'password123' -
 -- demo data only, never used in prod)
 -- -------------------------------------------------------------
-INSERT INTO `user` (id, username, email, password, role, status, created_at) VALUES
+INSERT INTO `smartcart_user` (id, username, email, password, role, status, created_at) VALUES
                                                                                  (1, 'smartcart_official', 'merchant@smartcart.demo', 'password123', 'MERCHANT', 'ACTIVE', DATE_SUB(NOW(), INTERVAL 200 DAY)),
                                                                                  (2, 'grace', 'grace@smartcart.demo', 'password123', 'CUSTOMER', 'ACTIVE', DATE_SUB(NOW(), INTERVAL 120 DAY)),
                                                                                  (3, 'alex', 'alex@smartcart.demo', 'password123', 'CUSTOMER', 'ACTIVE', DATE_SUB(NOW(), INTERVAL 90 DAY))
@@ -34,7 +34,7 @@ INSERT INTO `user` (id, username, email, password, role, status, created_at) VAL
                          username = VALUES(username), email = VALUES(email), password = VALUES(password),
                          role = VALUES(role), status = VALUES(status), created_at = VALUES(created_at);
 
-INSERT INTO user_profile (id, user_id, first_name, last_name, address, postal_code, phone_number, avatar_url, shop_name) VALUES
+INSERT INTO smartcart_user_profile (id, user_id, first_name, last_name, address, postal_code, phone_number, avatar_url, shop_name) VALUES
                                                                                                                              (1, 1, 'SmartCart', 'Official', '1 Store Road, Singapore', '018956', '65001234', NULL, 'SmartCart Official'),
                                                                                                                              (2, 2, 'Grace', 'Tan', '123 Orchard Road, Singapore', '238888', '91234567', NULL, NULL),
                                                                                                                              (3, 3, 'Alex', 'Lim', '45 Bukit Timah Road, Singapore', '229899', '98765432', NULL, NULL)

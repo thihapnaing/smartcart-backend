@@ -1,7 +1,5 @@
 package nus.iss.smartcart.backend.dto;
 
-import nus.iss.smartcart.backend.model.Cart;
-
 import java.math.BigDecimal;
 import java.util.List;
 

@@ -14,8 +14,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import javax.swing.text.html.Option;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -85,7 +83,7 @@ class CartServiceTest {
 
         CartItemsResponse response = cartService.getCart(1L);
         CartItemDetail cartItemDetail = response.getCartItemDetails().get(0);
-        assertEquals(response.getCartItemDetails().size(),1);
+        assertEquals(1, response.getCartItemDetails().size());
         assertEquals(1L, cartItemDetail.getCartItemId());
         assertEquals(1L, cartItemDetail.getProductVariantId());
         assertEquals("Classic Crew Tee", cartItemDetail.getProductName());

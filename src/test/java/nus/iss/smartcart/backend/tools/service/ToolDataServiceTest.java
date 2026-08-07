@@ -192,4 +192,49 @@ class ToolDataServiceTest {
         List<Map<String, Object>> products = (List<Map<String, Object>>) result.get("products");
         assertEquals(2, products.size());
     }
+
+    // ── Remaining partial-branch coverage (SonarCloud condition coverage) ──
+
+    @Test
+    void getOrderHistory_skipsDuplicateAndNullCategoryNames() {
+        // Covers both the "categoryName != null" false branch and the
+        // "!purchasedCategories.contains(categoryName)" false branch - prior fixtures only ever
+        // hit the true/true path.
+        Order order = order(1L, new BigDecimal("10.00"), OrderStatus.DELIVERED, LocalDateTime.now(),
+            variantOf(category("Shoes")), variantOf(category("Shoes")), variantOf(category(null)));
+        when(orderRepository.findByUserIdOrderByOrderDateDesc(7L)).thenReturn(List.of(order));
+
+        Map<String, Object> result = service().getOrderHistory(7L);
+
+        assertEquals(List.of("Shoes"), result.get("purchasedCategories"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getOrderHistory_mapsNullStatusAsNullInRecentOrders() {
+        // Covers the false branch of o.getStatus() != null - prior fixtures always set a status.
+        Order orderWithNullStatus = order(3L, new BigDecimal("5.00"), null, LocalDateTime.now());
+        when(orderRepository.findByUserIdOrderByOrderDateDesc(8L)).thenReturn(List.of(orderWithNullStatus));
+
+        Map<String, Object> result = service().getOrderHistory(8L);
+
+        List<Map<String, Object>> recentOrders = (List<Map<String, Object>>) result.get("recentOrders");
+        assertNull(recentOrders.get(0).get("status"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void searchProducts_excludesProductsWithNullPriceWhenMaxPriceIsSet() {
+        // Covers the false branch of p.getPrice() != null inside the maxPrice filter - prior
+        // fixtures with a maxPrice always had a non-null price on every candidate.
+        ProductSearchResult noPrice = ProductSearchResult.builder().id(1L).name("No Price").price(null).build();
+        ProductSearchResult withPrice = ProductSearchResult.builder().id(2L).name("Has Price").price(new BigDecimal("10.00")).build();
+        when(productService.search(any(), any(), any(), anyBoolean(), anyInt())).thenReturn(List.of(noPrice, withPrice));
+
+        Map<String, Object> result = service().searchProducts(null, new BigDecimal("50.00"), null, 4, false);
+
+        List<Map<String, Object>> products = (List<Map<String, Object>>) result.get("products");
+        assertEquals(1, products.size());
+        assertEquals("Has Price", products.get(0).get("name"));
+    }
 }

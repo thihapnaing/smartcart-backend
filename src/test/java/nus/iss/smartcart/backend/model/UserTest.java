@@ -23,7 +23,6 @@ class UserTest {
         onCreate.invoke(user);
 
         assertNotNull(user.getCreatedAt());
-        // Author: Htet Nandar (Grace)
         // Compared as zone-aware ZonedDateTime (not plain LocalDateTime) per Sonar java:S6355 -
         // duration/time-difference computations should use zone-aware types.
         ZonedDateTime actual = user.getCreatedAt().atZone(ZoneId.of("Asia/Singapore"));

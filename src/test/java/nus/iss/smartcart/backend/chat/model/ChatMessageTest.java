@@ -23,7 +23,6 @@ class ChatMessageTest {
         onCreate.invoke(message);
 
         assertNotNull(message.getCreatedAt());
-        // Author: Htet Nandar (Grace)
         // Compared as zone-aware ZonedDateTime (not plain LocalDateTime) per Sonar java:S6355 -
         // duration/time-difference computations should use zone-aware types.
         ZonedDateTime actual = message.getCreatedAt().atZone(ZoneId.of("Asia/Singapore"));

@@ -224,6 +224,20 @@ class ToolDataServiceTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void getOrderHistory_mapsNullOrderDateAsNullInRecentOrders() {
+        // Covers the false branch of o.getOrderDate() != null - prior fixtures always set an
+        // orderDate (needed for the recency sort), so that branch was never exercised.
+        Order orderWithNullDate = order(4L, new BigDecimal("5.00"), OrderStatus.PENDING, null);
+        when(orderRepository.findByUserIdOrderByOrderDateDesc(9L)).thenReturn(List.of(orderWithNullDate));
+
+        Map<String, Object> result = service().getOrderHistory(9L);
+
+        List<Map<String, Object>> recentOrders = (List<Map<String, Object>>) result.get("recentOrders");
+        assertNull(recentOrders.get(0).get("orderDate"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void searchProducts_excludesProductsWithNullPriceWhenMaxPriceIsSet() {
         // Covers the false branch of p.getPrice() != null inside the maxPrice filter - prior
         // fixtures with a maxPrice always had a non-null price on every candidate.

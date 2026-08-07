@@ -230,4 +230,21 @@ class PythonAiChatServiceTest {
         assertNull(response.getProducts().get(0).getImageUrl());
         assertNull(response.getProducts().get(0).getCategory());
     }
+
+    @Test
+    void handleMessage_mapsProductWithMissingIdFieldsToNulls() {
+        // Covers the false (null) branch of the productId and defaultVariantId ternaries -
+        // every other products test always sends both ids, so that branch was never exercised.
+        stubJsonReply("/api/chat", 200, "{\"reply\":\"Here you go\",\"products\":["
+            + "{\"name\":\"Tee\",\"price\":19.99,\"imageUrl\":\"http://x/tee.jpg\",\"category\":\"Tops\"}]}");
+        when(chatSessionRepository.findBySessionId("session-9")).thenReturn(Optional.empty());
+        when(chatSessionRepository.save(any(ChatSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ChatResponse response = service.handleMessage("session-9", "Show me new arrivals");
+
+        assertEquals(1, response.getProducts().size());
+        assertEquals("Tee", response.getProducts().get(0).getName());
+        assertNull(response.getProducts().get(0).getProductId());
+        assertNull(response.getProducts().get(0).getDefaultVariantId());
+    }
 }

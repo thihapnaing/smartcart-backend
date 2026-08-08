@@ -3,11 +3,13 @@ package nus.iss.smartcart.backend.model;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 @Entity
-@Table(name = "user")
+@Table(name = "smartcart_user")
 public class User {
 
+    // Required by JPA - Hibernate instantiates entities via reflection when loading from the DB.
     public User() {}
 
     @Id
@@ -30,8 +32,10 @@ public class User {
 
     private LocalDateTime createdAt;
 
+    // Explicit zone (matches docker-compose's Singapore timezone) instead of the JVM's
+    // implicit default, so createdAt doesn't silently shift if the host's TZ ever differs.
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now(ZoneId.of("Asia/Singapore"));
     }
 
     //Getters and Setters

@@ -3,9 +3,10 @@ package nus.iss.smartcart.backend.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "user_profile")
+@Table(name = "smartcart_user_profile")
 public class UserProfile {
 
+    // Required by JPA - Hibernate instantiates entities via reflection when loading from the DB.
     public UserProfile() {}
 
     @Id

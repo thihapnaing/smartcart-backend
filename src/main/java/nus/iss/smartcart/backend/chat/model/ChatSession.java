@@ -23,6 +23,7 @@ import lombok.ToString;
 import nus.iss.smartcart.backend.model.User;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -60,9 +61,11 @@ public class ChatSession {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    // Explicit zone (matches docker-compose's Singapore timezone) instead of the JVM's
+    // implicit default, so createdAt doesn't silently shift if the host's TZ ever differs.
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now(ZoneId.of("Asia/Singapore"));
     }
 
     /** Convenience for appending a message while keeping both sides of the relation in sync. */

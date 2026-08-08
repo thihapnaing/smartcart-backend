@@ -1,5 +1,9 @@
 package nus.iss.smartcart.backend.model;
 
+import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.List;
+
 import jakarta.persistence.*;
 
 @Entity
@@ -31,7 +35,47 @@ public class UserProfile {
     private String avatarUrl;
 
     private String shopName;
+    
+    
+    // For Recommender AI
+    @Column(name = "budget", precision = 10, scale = 2) // User budget limit
+    private BigDecimal budget;
 
+    @Column(name = "interests")
+    private String interests; // Stored as "Linen,Casual,Summer"
+
+    @Column(name = "preferred_categories")
+    private String preferredCategories; // Stored as "Tops,Bottoms"
+    
+    
+    
+ // --- Getters & Setters For Recommender AI ---
+
+    public BigDecimal getBudget() {
+        return budget;
+    }
+
+    public void setBudget(BigDecimal budget) {
+        this.budget = budget;
+    }
+
+    public String getInterests() {
+        return interests;
+    }
+
+    public void setInterests(String interests) {
+        this.interests = interests;
+    }
+
+    public String getPreferredCategories() {
+        return preferredCategories;
+    }
+
+    public void setPreferredCategories(String preferredCategories) {
+        this.preferredCategories = preferredCategories;
+    }
+ 
+    
     //Getters and Setters
 
     public Long getId() {
@@ -101,4 +145,21 @@ public class UserProfile {
     public void setShopName(String shopName) {
         this.shopName = shopName;
     }
+    
+    
+ // --- Helper Methods for FastAPI DTO Conversion For Recommender AI ---
+    public List<String> getInterestsList() {
+        if (interests == null || interests.isBlank()) return List.of();
+        return Arrays.stream(interests.split(","))
+                     .map(String::trim)
+                     .toList();
+    }
+
+    public List<String> getPreferredCategoriesList() {
+        if (preferredCategories == null || preferredCategories.isBlank()) return List.of();
+        return Arrays.stream(preferredCategories.split(","))
+                     .map(String::trim)
+                     .toList();
+    }
+    
 }

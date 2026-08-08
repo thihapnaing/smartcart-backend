@@ -34,14 +34,15 @@ INSERT INTO `smartcart_user` (id, username, email, password, role, status, creat
                          username = VALUES(username), email = VALUES(email), password = VALUES(password),
                          role = VALUES(role), status = VALUES(status), created_at = VALUES(created_at);
 
-INSERT INTO smartcart_user_profile (id, user_id, first_name, last_name, address, postal_code, phone_number, avatar_url, shop_name) VALUES
-                                                                                                                             (1, 1, 'SmartCart', 'Official', '1 Store Road, Singapore', '018956', '65001234', NULL, 'SmartCart Official'),
-                                                                                                                             (2, 2, 'Grace', 'Tan', '123 Orchard Road, Singapore', '238888', '91234567', NULL, NULL),
-                                                                                                                             (3, 3, 'Alex', 'Lim', '45 Bukit Timah Road, Singapore', '229899', '98765432', NULL, NULL)
+INSERT INTO smartcart_user_profile (id, user_id, first_name, last_name, address, postal_code, phone_number, avatar_url, shop_name, interests, preferred_categories, budget) VALUES
+                                                                                                                             (1, 1, 'SmartCart', 'Official', '1 Store Road, Singapore', '018956', '65001234', NULL, 'SmartCart Official', NULL, NULL, NULL),
+                                                                                                                             (2, 2, 'Grace', 'Tan', '123 Orchard Road, Singapore', '238888', '91234567', NULL, NULL, 'Linen,Breathable,Summer', 'Tops,Bottoms', 200.00),
+                                                                                                                             (3, 3, 'Alex', 'Lim', '45 Bukit Timah Road, Singapore', '229899', '98765432', NULL, NULL, 'Casual,Cotton,Minimalist', 'Tops,Shoes', 150.00)
     ON DUPLICATE KEY UPDATE
                          user_id = VALUES(user_id), first_name = VALUES(first_name), last_name = VALUES(last_name),
                          address = VALUES(address), postal_code = VALUES(postal_code), phone_number = VALUES(phone_number),
-                         avatar_url = VALUES(avatar_url), shop_name = VALUES(shop_name);
+                         avatar_url = VALUES(avatar_url), shop_name = VALUES(shop_name), interests = VALUES(interests), 
+  						 preferred_categories = VALUES(preferred_categories), budget = VALUES(budget);
 
 -- -------------------------------------------------------------
 -- Products. image_url points to real photo files bundled locally in the

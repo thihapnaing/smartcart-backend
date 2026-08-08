@@ -49,7 +49,6 @@ pywin32>=306; sys_platform == "win32"
 
 # Windows-only: mcp.server.stdio imports mcp.os.win32.utilities, which needs
 # pywintypes (part of pywin32) to talk to the stdio child process on Windows.
->>>>>>> 9ab9b30b3bd20d064adc3462da2b11f4196fba72
 
 # Pinned deliberately: mcp>=2.0 removed mcp.shared.context.RequestContext,
 # which langchain-mcp-adapters 0.1.x/0.2.x import - breaks at startup with

@@ -202,9 +202,9 @@ class CNNService:
         )
 
         if len(results) == 0:
-
             return {
                 "prediction": "",
+                "searchLabel": "",
                 "results": []
             }
 
@@ -214,11 +214,21 @@ class CNNService:
             f"{results[0]['category']}"
         )
 
+        # Short, human-friendly label for the search bar, e.g. "Red Shirt".
+        # Gender is left out on purpose - it's used to filter/rank, not shown.
+        search_label = f"{results[0]['color']} {results[0]['category']}".title()
+
         return {
 
             "prediction": prediction,
 
+            "searchLabel": search_label,
+
+            "gender": results[0]["gender"],
+
             "query_color": query_color,
+
+            "category": results[0]["category"],
 
             "total": min(10, len(results)),
 

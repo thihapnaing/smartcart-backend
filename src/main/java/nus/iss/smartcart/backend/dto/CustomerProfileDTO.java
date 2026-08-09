@@ -1,21 +1,33 @@
 package nus.iss.smartcart.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 public class CustomerProfileDTO {
 
+    @JsonProperty("customer_id")
     private String customerId;
+
+    @JsonProperty("interests")
     private List<String> interests;
+
+    @JsonProperty("cart")
     private List<String> cart;
+
+    @JsonProperty("recently_viewed")
     private List<String> recentlyViewed;
+
+    @JsonProperty("purchase_history")
     private List<String> purchaseHistory;
+
+    @JsonProperty("preferred_categories")
     private List<String> preferredCategories;
+
+    @JsonProperty("budget")
     private Double budget;
 
-    // Default Constructor
     public CustomerProfileDTO() {}
 
-    // 7-Parameter Constructor
     public CustomerProfileDTO(String customerId,
                               List<String> interests,
                               List<String> cart,
@@ -32,7 +44,6 @@ public class CustomerProfileDTO {
         this.budget = budget;
     }
 
-    // Getters and Setters
     public String getCustomerId() { return customerId; }
     public void setCustomerId(String customerId) { this.customerId = customerId; }
 

@@ -6,10 +6,15 @@ from dotenv import load_dotenv
 load_dotenv()   # loads .env from the working directory before anything else
 
 from services.agent_service import AgentService
+
+from services.vector_store import ProductCatalog
+from routers import chat as chat_router, recommendation_router
+
 from routers import chat as chat_router
 
 from services.cnn_service import CNNService
 from routers import image_search as image_router
+
 
 #
 #   Author: Htet Nandar (Grace)
@@ -24,12 +29,27 @@ async def lifespan(_app: FastAPI):
 
     await agent.start()
 
+    chat_router.agent_service = agent          # inject into routers
+    recommendation_router.agent_service = agent  # inject into routers
+
+
     cnn_service.load()                          # load CNN
 
     chat_router.agent_service = agent           # inject into routers
     image_router.cnn_service = cnn_service
 
+
     print("SmartCart AI agent ready.")
+
+    # --- Sync ChromaDB with Spring Boot MySQL on startup ---
+    try:
+        print("[Startup] Syncing product catalog with ChromaDB...")
+        #catalog = ProductCatalog()
+        #catalog.reindex()
+    except Exception as e:
+        print(f"[Startup Warning] Could not sync ChromaDB: {e}")
+    # --------------------------------------------------------
+
     yield
     print("Shutting down.")
 
@@ -37,7 +57,11 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title="SmartCart AI Service", lifespan=lifespan)
 
 app.include_router(chat_router.router)
+
+app.include_router(recommendation_router.router)
+
 app.include_router(image_router.router)
+
 
 
 @app.get("/api/health")

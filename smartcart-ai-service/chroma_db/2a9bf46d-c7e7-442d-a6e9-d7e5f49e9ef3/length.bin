@@ -1,0 +1,18 @@
+ Confluent hypergeometric limit function 0F1.
+
+
+Parabolic cylinder functions
+----------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   pbdv -- Parabolic cylinder function D.
+   pbvv -- Parabolic cylinder function V.
+   pbwa -- Parabolic cylinder function W.
+
+The following functions do not accept NumPy arrays (they are not
+universal functions):
+
+.. autosummary::
+   :toctree: genera

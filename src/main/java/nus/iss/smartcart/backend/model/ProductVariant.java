@@ -8,6 +8,7 @@ import jakarta.persistence.*;
         uniqueConstraints = @UniqueConstraint(columnNames = {"product_id", "size"})
 )
 public class ProductVariant {
+    // Required by JPA - Hibernate instantiates entities via reflection when loading from the DB.
     public ProductVariant() {}
 
     @Id

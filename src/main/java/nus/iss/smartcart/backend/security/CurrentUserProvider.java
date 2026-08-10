@@ -11,14 +11,14 @@ public class CurrentUserProvider {
     public CurrentUserProvider(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
-   //TODO: once JWT auth is implemented, replace with SecurityContextHolder lookup, and verify the token's role is MERCHANT.
+   // once JWT auth is implemented, replace with SecurityContextHolder lookup, and verify the token's role is MERCHANT.
     public User getCurrentMerchant() {
         return userRepository.findById(1L)
                 .orElseThrow(() -> new IllegalStateException(
                         "Seed data missing: expected merchant id=1 (smartcart_offical)"
                 ));
     }
-    //TODO: once JWT auth is implemented, replace with SecurityContextHolder lookup, and verify the token's role is CUSTOMER.
+    // once JWT auth is implemented, replace with SecurityContextHolder lookup, and verify the token's role is CUSTOMER.
     public User getCurrentCustomer() {
         return userRepository.findById(2L)
                 .orElseThrow(() -> new IllegalStateException(

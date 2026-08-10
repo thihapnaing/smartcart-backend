@@ -1,8 +1,11 @@
 package nus.iss.smartcart.backend.controller;
+import jakarta.validation.Valid;
+import nus.iss.smartcart.backend.dto.ProductCreateRequest;
 import nus.iss.smartcart.backend.dto.ProductDetailResponse;
 import nus.iss.smartcart.backend.dto.ProductSearchResult;
 import nus.iss.smartcart.backend.model.Gender;
 import nus.iss.smartcart.backend.service.ProductService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -42,5 +45,10 @@ public class ProductController {
     @GetMapping("/{id}")
     public ResponseEntity<ProductDetailResponse> getProductDetail(@PathVariable Long id) {
         return ResponseEntity.ok(productService.getProductDetail(id));
+    }
+
+    @PostMapping()
+    public ResponseEntity<ProductDetailResponse> createProduct(@Valid @RequestBody ProductCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(productService.createProduct(request));
     }
 }

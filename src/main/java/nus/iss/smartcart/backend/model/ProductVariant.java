@@ -42,6 +42,10 @@ public class ProductVariant {
         this.stock = stock;
     }
 
+    public void setProduct(Product product) {
+        this.product = product;
+    }
+
     public Product getProduct() {
         return product;
     }

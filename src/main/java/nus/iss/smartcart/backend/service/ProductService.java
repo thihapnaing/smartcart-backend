@@ -1,13 +1,15 @@
 package nus.iss.smartcart.backend.service;
 
+import nus.iss.smartcart.backend.dto.ProductCreateRequest;
 import nus.iss.smartcart.backend.dto.ProductDetailResponse;
 import nus.iss.smartcart.backend.dto.ProductSearchResult;
 import nus.iss.smartcart.backend.dto.ProductVariantDetail;
-import nus.iss.smartcart.backend.model.Gender;
-import nus.iss.smartcart.backend.model.Product;
-import nus.iss.smartcart.backend.model.ProductVariant;
+import nus.iss.smartcart.backend.model.*;
+import nus.iss.smartcart.backend.repository.CategoryRepository;
 import nus.iss.smartcart.backend.repository.ProductRepository;
 import jakarta.persistence.EntityNotFoundException;
+import nus.iss.smartcart.backend.repository.UserProfileRepository;
+import nus.iss.smartcart.backend.security.CurrentUserProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,9 +19,15 @@ import java.util.List;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final CurrentUserProvider currentUserProvider;
+    private final CategoryRepository categoryRepository;
+    private final UserProfileRepository userProfileRepository;
 
-    public ProductService(ProductRepository productRepository) {
+    public ProductService(ProductRepository productRepository, CurrentUserProvider currentUserProvider, CategoryRepository categoryRepository, UserProfileRepository userProfileRepository) {
         this.productRepository = productRepository;
+        this.currentUserProvider = currentUserProvider;
+        this.categoryRepository = categoryRepository;
+        this.userProfileRepository = userProfileRepository;
     }
 
     @Transactional
@@ -50,14 +58,49 @@ public class ProductService {
     public ProductDetailResponse getProductDetail(Long productId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new EntityNotFoundException("Product is not found"));
-        List<ProductVariant> productVariants = product.getVariants();
-
-        return createProductDetailResponse(product, productVariants);
+        return createProductDetailResponse(product);
 
     }
 
-    private ProductDetailResponse createProductDetailResponse(Product product, List<ProductVariant> productVariants) {
-        List<ProductVariantDetail> variantDetailList = productVariants.stream()
+    @Transactional
+    public ProductDetailResponse createProduct(ProductCreateRequest request) {
+        User merchant = currentUserProvider.getCurrentMerchant();
+        Category category = categoryRepository.findById(request.getCategoryId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Category not found: " + request.getCategoryId()
+                ));
+
+        String shopName = userProfileRepository.findByUserId(merchant.getId())
+                .map(UserProfile::getShopName)
+                .orElse(merchant.getUsername());
+
+        Product product = new Product();
+        product.setName(request.getName());
+        product.setDescription(request.getDescription());
+        product.setPrice(request.getPrice());
+        product.setGender(request.getGender());
+        product.setCategory(category);
+        product.setMerchant(merchant);
+        product.setShopName(shopName);
+        product.setStatus(request.getStatus());
+
+        List<ProductVariant> variants = request.getVariants().stream()
+                .map(v -> {
+                    ProductVariant variant = new ProductVariant();
+                    variant.setSize(v.getSize());
+                    variant.setStock(v.getStock());
+                    variant.setProduct(product);
+                    return variant;
+                })
+                .toList();
+        product.setVariants(variants);
+
+        Product saved = productRepository.save(product);
+        return createProductDetailResponse(saved);
+    }
+
+    private ProductDetailResponse createProductDetailResponse(Product product) {
+        List<ProductVariantDetail> variantDetailList = product.getVariants().stream()
                 .map(this::toProductVariantDetail)
                 .toList();
         return ProductDetailResponse.builder()

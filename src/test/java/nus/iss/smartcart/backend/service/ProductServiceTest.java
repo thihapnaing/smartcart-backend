@@ -1,32 +1,33 @@
 package nus.iss.smartcart.backend.service;
 
 import jakarta.persistence.EntityNotFoundException;
-import nus.iss.smartcart.backend.dto.ProductDetailResponse;
-import nus.iss.smartcart.backend.dto.ProductSearchResult;
-import nus.iss.smartcart.backend.dto.ProductVariantDetail;
-import nus.iss.smartcart.backend.model.Category;
-import nus.iss.smartcart.backend.model.Gender;
-import nus.iss.smartcart.backend.model.Product;
-import nus.iss.smartcart.backend.model.ProductVariant;
+import nus.iss.smartcart.backend.dto.*;
+import nus.iss.smartcart.backend.model.*;
+import nus.iss.smartcart.backend.repository.CategoryRepository;
 import nus.iss.smartcart.backend.repository.ProductRepository;
+import nus.iss.smartcart.backend.repository.UserProfileRepository;
+import nus.iss.smartcart.backend.security.CurrentUserProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ProductServiceTest {
 
     @Mock private ProductRepository productRepository;
+    @Mock private CurrentUserProvider currentUserProvider;
+    @Mock private CategoryRepository categoryRepository;
+    @Mock private UserProfileRepository userProfileRepository;
 
     @InjectMocks private ProductService productService;
 
@@ -174,4 +175,107 @@ class ProductServiceTest {
         assertEquals("S", variantDetail.getSize());
         assertEquals(5, variantDetail.getStock());
     }
+
+    @Test
+    void createProduct_validRequest_returnsCreatedProduct() {
+        User merchant = mock(User.class);
+        when(merchant.getId()).thenReturn(1L);
+        when(currentUserProvider.getCurrentMerchant()).thenReturn(merchant);
+
+        Category category = mock(Category.class);
+        when(category.getName()).thenReturn("Tops");
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+
+        UserProfile profile = mock(UserProfile.class);
+        when(profile.getShopName()).thenReturn("SmartCart Official");
+        when(userProfileRepository.findByUserId(1L)).thenReturn(Optional.of(profile));
+
+        VariantRequest variantRequest = new VariantRequest();
+        variantRequest.setSize("M");
+        variantRequest.setStock(10);
+
+        ProductCreateRequest request =
+                ProductCreateRequest.builder()
+                                .name("Classic Tee")
+                                .description("Soft cotton tee")
+                                .price(BigDecimal.valueOf(19.90))
+                                .gender(Gender.MEN)
+                                .categoryId(1L)
+                                .status(ProductStatus.ACTIVE)
+                                .variants(List.of(variantRequest))
+                                .build();
+
+        when(productRepository.save(any(Product.class))).thenAnswer(invocation -> {
+            Product p = invocation.getArgument(0);
+            ReflectionTestUtils.setField(p, "id", 100L);
+            return p;
+        });
+
+        ProductDetailResponse response = productService.createProduct(request);
+
+        assertEquals(100L, response.getProductId());
+        assertEquals("Classic Tee", response.getName());
+        assertEquals("SmartCart Official", response.getShopName());
+        assertEquals("Tops", response.getCategoryName());
+        assertEquals(1, response.getVariants().size());
+        assertEquals("M", response.getVariants().get(0).getSize());
+        assertEquals(10, response.getVariants().get(0).getStock());
+    }
+
+    @Test
+    void createProduct_categoryNotFound_throwsIllegalArgumentException() {
+        User merchant = mock(User.class);
+        when(currentUserProvider.getCurrentMerchant()).thenReturn(merchant);
+
+        when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
+
+        ProductCreateRequest request = ProductCreateRequest.builder()
+                        .categoryId(99L)
+                        .build();
+
+        assertThrows(IllegalArgumentException.class, () -> productService.createProduct(request));
+    }
+
+    @Test
+    void createProduct_noProfile_fallsBackToUsername() {
+        User merchant = mock(User.class);
+        when(merchant.getId()).thenReturn(1L);
+        when(merchant.getUsername()).thenReturn("smartcart_official");
+        when(currentUserProvider.getCurrentMerchant()).thenReturn(merchant);
+
+        Category category = mock(Category.class);
+        when(category.getName()).thenReturn("Tops");
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+
+        when(userProfileRepository.findByUserId(1L)).thenReturn(Optional.empty());
+
+        VariantRequest variantRequest = new VariantRequest();
+        variantRequest.setSize("M");
+        variantRequest.setStock(10);
+
+        ProductCreateRequest request =
+                ProductCreateRequest.builder()
+                        .name("Classic Tee")
+                        .description("Soft cotton tee")
+                        .price(BigDecimal.valueOf(19.90))
+                        .gender(Gender.MEN)
+                        .categoryId(1L)
+                        .status(ProductStatus.ACTIVE)
+                        .variants(List.of(variantRequest))
+                        .build();
+
+        when(productRepository.save(any(Product.class))).thenAnswer(invocation -> {
+            Product p = invocation.getArgument(0);
+            ReflectionTestUtils.setField(p, "id", 100L);
+            return p;
+        });
+
+        ProductDetailResponse response = productService.createProduct(request);
+
+        assertEquals("smartcart_official", response.getShopName());
+    }
+
+
+
+
 }

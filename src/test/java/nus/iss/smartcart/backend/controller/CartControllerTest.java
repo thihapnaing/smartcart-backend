@@ -4,7 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import nus.iss.smartcart.backend.dto.AddToCartRequest;
 import nus.iss.smartcart.backend.dto.CartItemsResponse;
 import nus.iss.smartcart.backend.dto.UpdateCartItemRequest;
+import nus.iss.smartcart.backend.model.User;
+import nus.iss.smartcart.backend.security.CurrentUserProvider;
 import nus.iss.smartcart.backend.service.CartService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -15,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 import java.util.List;
 
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -25,10 +29,17 @@ class CartControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockitoBean
-    private CartService cartService;
+    @MockitoBean private CartService cartService;
+    @MockitoBean private CurrentUserProvider currentUserProvider;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @BeforeEach
+    void setUpCurrentCustomer() {
+        User fakeCustomer = mock(User.class);
+        when(fakeCustomer.getId()).thenReturn(2L);
+        when(currentUserProvider.getCurrentCustomer()).thenReturn(fakeCustomer);
+    }
 
     @Test
     void getCart_returnsOkWithCartData() throws Exception {

@@ -6,7 +6,10 @@ import nus.iss.smartcart.backend.dto.CheckoutResponse;
 import nus.iss.smartcart.backend.dto.DeliveryDetails;
 import nus.iss.smartcart.backend.model.OrderStatus;
 import nus.iss.smartcart.backend.model.PaymentMethod;
+import nus.iss.smartcart.backend.model.User;
+import nus.iss.smartcart.backend.security.CurrentUserProvider;
 import nus.iss.smartcart.backend.service.OrderService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -17,6 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 import java.util.List;
 
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -27,10 +31,17 @@ class OrderControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockitoBean
-    private OrderService orderService;
+    @MockitoBean private OrderService orderService;
+    @MockitoBean private CurrentUserProvider currentUserProvider;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @BeforeEach
+    void setUpCurrentCustomer() {
+        User fakeCustomer = mock(User.class);
+        when(fakeCustomer.getId()).thenReturn(2L);
+        when(currentUserProvider.getCurrentCustomer()).thenReturn(fakeCustomer);
+    }
 
     @Test
     void checkout_returnsCreatedWithOrderData() throws Exception {

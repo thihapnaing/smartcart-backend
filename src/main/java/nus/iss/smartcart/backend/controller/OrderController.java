@@ -2,6 +2,7 @@ package nus.iss.smartcart.backend.controller;
 
 import nus.iss.smartcart.backend.dto.CheckoutRequest;
 import nus.iss.smartcart.backend.dto.CheckoutResponse;
+import nus.iss.smartcart.backend.security.CurrentUserProvider;
 import nus.iss.smartcart.backend.service.OrderService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,22 +14,24 @@ import org.springframework.web.bind.annotation.*;
 public class OrderController {
 
     private final OrderService orderService;
+    private final CurrentUserProvider currentUserProvider;
 
-    public OrderController(OrderService orderService) {
+    public OrderController(OrderService orderService, CurrentUserProvider currentUserProvider) {
         this.orderService = orderService;
+        this.currentUserProvider = currentUserProvider;
     }
 
     //change to authenticated user ID, once JWT auth is implemented
     @PostMapping("/checkout")
     public ResponseEntity<CheckoutResponse> checkout(@RequestBody CheckoutRequest request) {
-        Long userId = 2L;
+        Long userId = currentUserProvider.getCurrentCustomer().getId();
         CheckoutResponse response  = orderService.checkout(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<CheckoutResponse> getOrderDetail(@PathVariable Long id) {
-        Long userId = 2L; //replace with authenticated user once auth is implemented
+        Long userId = currentUserProvider.getCurrentCustomer().getId();
         return ResponseEntity.ok(orderService.getOrderDetail(id, userId));
     }
 }

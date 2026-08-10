@@ -30,6 +30,9 @@ CREATE TABLE IF NOT EXISTS smartcart_user_profile (
     phone_number VARCHAR(50),
     avatar_url VARCHAR(255),
     shop_name VARCHAR(255),
+    interests VARCHAR(255),
+    preferred_categories VARCHAR(255),
+    budget DECIMAL(10, 2),
     PRIMARY KEY (id)
 );
 

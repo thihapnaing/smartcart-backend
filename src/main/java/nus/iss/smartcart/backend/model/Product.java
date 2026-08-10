@@ -10,7 +10,7 @@ import java.util.List;
 @Table(name="product")
 public class Product {
 
-    public Product() {}
+    public Product() { /* Intentionally left empty */ }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,6 +26,7 @@ public class Product {
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProductVariant> variants = new ArrayList<>();
 
+    @Column(name = "image_url")
     private String imageUrl;
 
     @Enumerated(EnumType.STRING)
@@ -54,7 +55,6 @@ public class Product {
     }
 
     //Getters and Setters
-
 
     public Long getId() {
         return id;

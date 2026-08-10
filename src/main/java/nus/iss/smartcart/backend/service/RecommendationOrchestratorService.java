@@ -106,7 +106,7 @@ public class RecommendationOrchestratorService {
                                 rec.getScore()
                         );
                     })
-                    .filter(dto -> dto != null)
+                    .filter(java.util.Objects::nonNull)
                     .toList();
 
             // 2. Return the combined object containing the summary and the products

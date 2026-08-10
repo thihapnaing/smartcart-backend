@@ -27,6 +27,6 @@ public interface ProductVectorRepository extends JpaRepository<Product, Long> {
 	        LEFT JOIN category c ON p.category_id = c.id
 	        LEFT JOIN product_variant pv ON p.id = pv.product_id
 	        GROUP BY p.id
-	    """, nativeQuery = true)
+			""", nativeQuery = true)
 	    List<ProductVectorDTO> getProductVectorData();
 }

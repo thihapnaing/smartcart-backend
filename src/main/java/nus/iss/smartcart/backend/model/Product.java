@@ -10,7 +10,7 @@ import java.util.List;
 @Table(name="product")
 public class Product {
 
-    public Product() {}
+    public Product() { /* Intentionally left empty */ }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -55,7 +55,6 @@ public class Product {
     }
 
     //Getters and Setters
-
 
     public Long getId() {
         return id;

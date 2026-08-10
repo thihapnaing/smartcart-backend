@@ -1,6 +1,7 @@
 package nus.iss.smartcart.backend.controller;
 
 import nus.iss.smartcart.backend.dto.UserProfileForDeliveryDetails;
+import nus.iss.smartcart.backend.security.CurrentUserProvider;
 import nus.iss.smartcart.backend.service.UserProfileService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -14,14 +15,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserProfileController {
 
     private final UserProfileService userProfileService;
+    private final CurrentUserProvider currentUserProvider;
 
-    public UserProfileController(UserProfileService userProfileService) {
+    public UserProfileController(UserProfileService userProfileService, CurrentUserProvider currentUserProvider) {
         this.userProfileService = userProfileService;
+        this.currentUserProvider = currentUserProvider;
     }
 
     @GetMapping()
     public ResponseEntity<UserProfileForDeliveryDetails> getProfile() {
-        Long userId = 2L; //to replace with authenticated user once auth is implemented
+        Long userId = currentUserProvider.getCurrentCustomer().getId();
         return ResponseEntity.ok(userProfileService.getProfileForDeliveryDetails(userId));
     }
 }

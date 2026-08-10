@@ -8,7 +8,10 @@ import jakarta.persistence.*;
         uniqueConstraints = @UniqueConstraint(columnNames = {"product_id", "size"})
 )
 public class ProductVariant {
-    public ProductVariant() {}
+
+    public ProductVariant() {
+        // Intentionally empty: required by JPA/Hibernate for entity instantiation.
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -40,6 +43,10 @@ public class ProductVariant {
 
     public void setStock(Integer stock) {
         this.stock = stock;
+    }
+
+    public void setProduct(Product product) {
+        this.product = product;
     }
 
     public Product getProduct() {

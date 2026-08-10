@@ -68,7 +68,8 @@ class OrderServiceTest {
         when(productVariant.getProduct()).thenReturn(product);
         when(product.getName()).thenReturn("White Tee");
         when(productVariant.getSize()).thenReturn("S");
-        assertThrows(IllegalStateException.class, () -> orderService.checkout(1L, new CheckoutRequest()));
+        CheckoutRequest request = new CheckoutRequest();
+        assertThrows(IllegalStateException.class, () -> orderService.checkout(1L, request));
         verifyNoInteractions(userRepository);
     }
 

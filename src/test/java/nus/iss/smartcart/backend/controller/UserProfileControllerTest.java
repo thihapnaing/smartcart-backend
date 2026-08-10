@@ -13,7 +13,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(UserProfileController.class)
-public class UserProfileControllerTest {
+class UserProfileControllerTest {
 
     @Autowired
     private MockMvc mockMvc;

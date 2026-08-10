@@ -41,7 +41,8 @@ class OrderServiceTest {
     @Test
     void checkout_cartNotFound_throwsEntityNotFoundException() {
         when(cartRepository.findByUserId(1L)).thenReturn(Optional.empty());
-        assertThrows(EntityNotFoundException.class, () -> orderService.checkout(1L, new CheckoutRequest()));
+        CheckoutRequest request = new CheckoutRequest();
+        assertThrows(EntityNotFoundException.class, () -> orderService.checkout(1L, request));
         verifyNoInteractions(cartItemRepository, userRepository, orderRepository, paymentRepository, orderItemRepository);
     }
 
@@ -49,7 +50,8 @@ class OrderServiceTest {
     void checkout_emptyCart_throwsIllegalStateException() {
         when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(cart));
         when(cartItemRepository.findByCartId(cart.getId())).thenReturn(List.of());
-        assertThrows(IllegalStateException.class, () -> orderService.checkout(1L, new CheckoutRequest()));
+        CheckoutRequest request = new CheckoutRequest();
+        assertThrows(IllegalStateException.class, () -> orderService.checkout(1L, request));
         verifyNoInteractions(userRepository, orderRepository, paymentRepository, orderItemRepository);
     }
 
@@ -80,7 +82,8 @@ class OrderServiceTest {
         when(productVariant.getStock()).thenReturn(3);
         when(cartItem.getQuantity()).thenReturn(1);
         when(userRepository.findById(1L)).thenReturn(Optional.empty());
-        assertThrows(EntityNotFoundException.class, () -> orderService.checkout(1L, new CheckoutRequest()));
+        CheckoutRequest request = new CheckoutRequest();
+        assertThrows(EntityNotFoundException.class, () -> orderService.checkout(1L, request));
     }
 
     @Test

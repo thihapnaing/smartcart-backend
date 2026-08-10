@@ -1,11 +1,9 @@
 package nus.iss.smartcart.backend.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import nus.iss.smartcart.backend.dto.CartItemDetail;
 import nus.iss.smartcart.backend.dto.CheckoutRequest;
 import nus.iss.smartcart.backend.dto.CheckoutResponse;
 import nus.iss.smartcart.backend.dto.DeliveryDetails;
-import nus.iss.smartcart.backend.model.CartItem;
 import nus.iss.smartcart.backend.model.OrderStatus;
 import nus.iss.smartcart.backend.model.PaymentMethod;
 import nus.iss.smartcart.backend.service.OrderService;
@@ -25,7 +23,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(OrderController.class)
-public class OrderControllerTest {
+class OrderControllerTest {
     @Autowired
     private MockMvc mockMvc;
 

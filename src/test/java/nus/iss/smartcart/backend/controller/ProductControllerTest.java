@@ -1,6 +1,5 @@
 package nus.iss.smartcart.backend.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import nus.iss.smartcart.backend.dto.ProductDetailResponse;
 import nus.iss.smartcart.backend.model.Gender;
 import nus.iss.smartcart.backend.service.ProductService;
@@ -18,7 +17,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(ProductController.class)
-public class ProductControllerTest {
+class ProductControllerTest {
 
     @Autowired
     private MockMvc mockMvc;

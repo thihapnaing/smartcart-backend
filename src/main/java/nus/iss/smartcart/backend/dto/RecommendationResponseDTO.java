@@ -11,7 +11,7 @@ public class RecommendationResponseDTO {
     @JsonProperty("agent_summary")
     private String agentSummary;
 
-    public RecommendationResponseDTO() {}
+    public RecommendationResponseDTO() { /* Intentionally left empty */ }
 
     public List<RecommendationItem> getRecommendations() { return recommendations; }
     public void setRecommendations(List<RecommendationItem> recommendations) { this.recommendations = recommendations; }

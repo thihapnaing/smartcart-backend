@@ -23,6 +23,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class RecommendationOrchestratorService {
+	
+	private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(RecommendationOrchestratorService.class);
 
     private final UserProfileRepository userProfileRepository;
     private final CartRepository cartRepository;
@@ -113,7 +115,7 @@ public class RecommendationOrchestratorService {
             return new RecommendationResultDTO(aiResponse.getAgentSummary(), recommendedProducts);
 
         } catch (Exception e) {
-            System.err.println("[Warning] Failed to fetch AI recommendations from FastAPI: " + e.getMessage());
+        	logger.warn("[Warning] Failed to fetch AI recommendations from FastAPI: {}", e.getMessage());
             return new RecommendationResultDTO("Fallback recommendations used due to connection error.", getFallbackProducts());
         }
     }

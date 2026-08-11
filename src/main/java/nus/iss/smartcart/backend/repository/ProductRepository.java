@@ -36,4 +36,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                           @Param("gender") Gender gender,
                           @Param("newestFirst") boolean newestFirst);
 
+    List<Product> findByMerchantId(Long merchantId);
+
 }

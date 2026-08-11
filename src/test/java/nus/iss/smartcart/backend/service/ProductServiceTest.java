@@ -82,6 +82,7 @@ class ProductServiceTest {
         when(product.getShopName()).thenReturn("SmartCart Shop");
         when(product.getCategory()).thenReturn(category);
         when(product.getGender()).thenReturn(Gender.MEN);
+        when(product.getStatus()).thenReturn(ProductStatus.ACTIVE);
         when(product.getVariants()).thenReturn(List.of());
 
         when(productRepository.searchByKeyword("shirt")).thenReturn(List.of(product));
@@ -382,5 +383,38 @@ class ProductServiceTest {
         ProductDetailResponse response = productService.deactivateProduct(1L);
 
         assertEquals(ProductStatus.INACTIVE.name(), response.getStatus());
+    }
+
+    @Test
+    void getMerchantProducts_returnsMappedResults() {
+        User merchant = mock(User.class);
+        when(merchant.getId()).thenReturn(1L);
+        when(currentUserProvider.getCurrentMerchant()).thenReturn(merchant);
+
+        Category category = mock(Category.class);
+        when(category.getName()).thenReturn("Tops");
+
+        ProductVariant variant = mock(ProductVariant.class);
+        when(variant.getId()).thenReturn(1L);
+
+        Product product = mock(Product.class);
+        when(product.getId()).thenReturn(1L);
+        when(product.getName()).thenReturn("White Tee");
+        when(product.getDescription()).thenReturn("White and soft");
+        when(product.getPrice()).thenReturn(BigDecimal.valueOf(50));
+        when(product.getImageUrl()).thenReturn("/assets/products/product1");
+        when(product.getShopName()).thenReturn("SmartCart Shop");
+        when(product.getCategory()).thenReturn(category);
+        when(product.getGender()).thenReturn(Gender.MEN);
+        when(product.getStatus()).thenReturn(ProductStatus.ACTIVE);
+        when(product.getVariants()).thenReturn(List.of(variant));
+
+        when(productRepository.findByMerchantId(1L)).thenReturn(List.of(product));
+
+        List<ProductSearchResult> results = productService.getMerchantProducts();
+
+        assertEquals(1, results.size());
+        assertEquals("White Tee", results.get(0).getName());
+        assertEquals("ACTIVE", results.get(0).getStatus());
     }
 }

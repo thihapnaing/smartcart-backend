@@ -67,4 +67,10 @@ public class ProductController {
         ProductDetailResponse response = productService.deactivateProduct(id);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/own")
+    public ResponseEntity<List<ProductSearchResult>> getMerchantProducts() {
+        List<ProductSearchResult> response = productService.getMerchantProducts();
+        return ResponseEntity.ok(response);
+    }
 }

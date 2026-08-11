@@ -16,7 +16,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -275,7 +277,63 @@ class ProductServiceTest {
         assertEquals("smartcart_official", response.getShopName());
     }
 
+    @Test
+    void updateProduct_mergesVariantsCorrectly() {
+        User merchant = mock(User.class);
+        when(merchant.getId()).thenReturn(1L);
+        when(currentUserProvider.getCurrentMerchant()).thenReturn(merchant);
 
+        Product existingProduct = new Product();
+        existingProduct.setMerchant(merchant);
+        List<ProductVariant> productVariants = existingProduct.getVariants();
 
+        ProductVariant variant1 = new ProductVariant();
+        variant1.setProduct(existingProduct);
+        variant1.setSize("S");
+        variant1.setStock(10);
 
+        ProductVariant variant2 = new ProductVariant();
+        variant2.setProduct(existingProduct);
+        variant2.setSize("M");
+        variant2.setStock(5);
+
+        productVariants.add(variant1);
+        productVariants.add(variant2);
+        existingProduct.setVariants(productVariants);
+
+        when(productRepository.findById(1L)).thenReturn(Optional.of(existingProduct));
+
+        Category category = mock(Category.class);
+        when(category.getName()).thenReturn("Tops");
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+
+        when(productRepository.save(any(Product.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        VariantRequest requestVariant1 = new VariantRequest();
+        requestVariant1.setSize("M");
+        requestVariant1.setStock(11);
+        VariantRequest requestVariant2 = new VariantRequest();
+        requestVariant2.setSize("L");
+        requestVariant2.setStock(10);
+
+        ProductUpdateRequest request = ProductUpdateRequest.builder()
+                .name("White Tee")
+                .description("soft and made of cotton")
+                .price(BigDecimal.valueOf(1))
+                .gender(Gender.MEN)
+                .categoryId(1L)
+                .status(ProductStatus.ACTIVE)
+                .variants(List.of(requestVariant1, requestVariant2))
+                .build();
+
+        ProductDetailResponse response = productService.updateProduct(1L, request);
+
+        Map<String, Integer> stockBySize = response.getVariants().stream()
+                .collect(Collectors.toMap(ProductVariantDetail::getSize, ProductVariantDetail::getStock));
+
+        assertEquals(2, response.getVariants().size());
+        assertEquals(11, stockBySize.get("M"));
+        assertEquals(10, stockBySize.get("L"));
+        assertNull(stockBySize.get("S"));
+    }
 }

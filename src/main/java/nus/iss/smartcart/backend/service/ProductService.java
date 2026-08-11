@@ -30,7 +30,7 @@ public class ProductService {
         this.userProfileRepository = userProfileRepository;
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<ProductSearchResult> searchByKeyword(String keyword) {
         List<Product> products = productRepository.searchByKeyword(keyword);
 
@@ -45,7 +45,7 @@ public class ProductService {
      * compatibility) and the AI chat's tool calls, which can also filter by category/gender and sort
      * by recency for "new arrivals" style questions. Any parameter left null is not filtered on.
      */
-    @Transactional
+    @Transactional(readOnly = true)
     public List<ProductSearchResult> search(String keyword, String categoryName, Gender gender, boolean newestFirst, int limit) {
         List<Product> products = productRepository.search(keyword, categoryName, gender, newestFirst);
         return products.stream()
@@ -54,7 +54,7 @@ public class ProductService {
                 .toList();
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public ProductDetailResponse getProductDetail(Long productId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new EntityNotFoundException("Product is not found"));
@@ -126,6 +126,14 @@ public class ProductService {
         return createProductDetailResponse(productRepository.save(product));
     }
 
+    @Transactional(readOnly = true)
+    public List<ProductSearchResult> getMerchantProducts() {
+        User merchant = currentUserProvider.getCurrentMerchant();
+        List<Product> products = productRepository.findByMerchantId(merchant.getId());
+        return products.stream()
+                .map(this::toSearchResult)
+                .toList();
+    }
     private void applyScalarUpdates(Product product, ProductRequest request, Category category) {
         product.setCategory(category);
         product.setName(request.getName());
@@ -202,6 +210,7 @@ public class ProductService {
                     .categoryName(product.getCategory().getName())
                     .gender(product.getGender().name())
                     .defaultVariantId(defaultVariantId)
+                    .status(product.getStatus().name())
                     .build();
     }
 }

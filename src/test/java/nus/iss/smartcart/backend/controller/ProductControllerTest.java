@@ -3,6 +3,7 @@ package nus.iss.smartcart.backend.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import nus.iss.smartcart.backend.dto.ProductRequest;
 import nus.iss.smartcart.backend.dto.ProductDetailResponse;
+import nus.iss.smartcart.backend.dto.ProductSearchResult;
 import nus.iss.smartcart.backend.dto.VariantRequest;
 import nus.iss.smartcart.backend.model.Gender;
 import nus.iss.smartcart.backend.model.ProductStatus;
@@ -198,5 +199,20 @@ class ProductControllerTest {
         mockMvc.perform(delete("/api/products/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("INACTIVE"));
+    }
+
+    @Test
+    void getMerchantProducts_returnsOkWithResults() throws Exception {
+        ProductSearchResult fakeResult = ProductSearchResult.builder()
+                .id(1L)
+                .name("White Tee")
+                .status("ACTIVE")
+                .build();
+
+        when(productService.getMerchantProducts()).thenReturn(List.of(fakeResult));
+
+        mockMvc.perform(get("/api/products/own"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("White Tee"));
     }
 }

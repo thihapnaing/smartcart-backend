@@ -51,6 +51,7 @@ class ProductServiceTest {
         when(product.getShopName()).thenReturn("SmartCart Shop");
         when(product.getCategory()).thenReturn(category);
         when(product.getGender()).thenReturn(Gender.MEN);
+        when(product.getStatus()).thenReturn(ProductStatus.ACTIVE);
         when(product.getVariants()).thenReturn(List.of(productVariant));
 
         when(productRepository.searchByKeyword("shirt")).thenReturn(List.of(product));
@@ -116,6 +117,7 @@ class ProductServiceTest {
         when(product1.getImageUrl()).thenReturn("/assets/products/product1");
         when(product1.getShopName()).thenReturn("SmartCart Shop");
         when(product1.getCategory()).thenReturn(category);
+        when(product1.getStatus()).thenReturn(ProductStatus.ACTIVE);
         when(product1.getGender()).thenReturn(Gender.MEN);
         when(product1.getVariants()).thenReturn(List.of(productVariant));
 

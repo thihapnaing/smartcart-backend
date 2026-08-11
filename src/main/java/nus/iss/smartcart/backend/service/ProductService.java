@@ -1,9 +1,7 @@
 package nus.iss.smartcart.backend.service;
 
-import nus.iss.smartcart.backend.dto.ProductCreateRequest;
-import nus.iss.smartcart.backend.dto.ProductDetailResponse;
-import nus.iss.smartcart.backend.dto.ProductSearchResult;
-import nus.iss.smartcart.backend.dto.ProductVariantDetail;
+import nus.iss.smartcart.backend.dto.*;
+import nus.iss.smartcart.backend.exception.ForbiddenException;
 import nus.iss.smartcart.backend.model.*;
 import nus.iss.smartcart.backend.repository.CategoryRepository;
 import nus.iss.smartcart.backend.repository.ProductRepository;
@@ -14,6 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductService {
@@ -63,7 +63,7 @@ public class ProductService {
     }
 
     @Transactional
-    public ProductDetailResponse createProduct(ProductCreateRequest request) {
+    public ProductDetailResponse createProduct(ProductRequest request) {
         User merchant = currentUserProvider.getCurrentMerchant();
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new IllegalArgumentException(
@@ -97,6 +97,62 @@ public class ProductService {
 
         Product saved = productRepository.save(product);
         return createProductDetailResponse(saved);
+    }
+
+    @Transactional
+    public ProductDetailResponse updateProduct(Long productId, ProductRequest request) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
+
+        assertOwnership(product);
+
+        mergeVariants(product, request.getVariants());
+
+        Category category = categoryRepository.findById(request.getCategoryId())
+                .orElseThrow(() -> new IllegalArgumentException("Category not found: " + request.getCategoryId()));
+
+        applyScalarUpdates(product, request, category);
+
+        Product saved = productRepository.save(product);
+        return createProductDetailResponse(saved);
+    }
+
+    private void applyScalarUpdates(Product product, ProductRequest request, Category category) {
+        product.setCategory(category);
+        product.setName(request.getName());
+        product.setDescription(request.getDescription());
+        product.setPrice(request.getPrice());
+        product.setGender(request.getGender());
+        product.setStatus(request.getStatus());
+    }
+
+    private void mergeVariants(Product product, List<VariantRequest> variants) {
+        Map<String, ProductVariant> existingBySize = product.getVariants().stream()
+                .collect(Collectors.toMap(ProductVariant::getSize, variant -> variant));
+
+        for(VariantRequest updatedVariant : variants) {
+            if(existingBySize.containsKey(updatedVariant.getSize())) {
+                ProductVariant existing = existingBySize.get(updatedVariant.getSize());
+                existing.setStock(updatedVariant.getStock());
+                existingBySize.remove(updatedVariant.getSize());
+            } else {
+                ProductVariant newVariant = new ProductVariant();
+                newVariant.setSize(updatedVariant.getSize());
+                newVariant.setStock(updatedVariant.getStock());
+                newVariant.setProduct(product);
+                product.getVariants().add(newVariant);
+            }
+        }
+
+        product.getVariants().removeAll(existingBySize.values());
+    }
+
+    private void assertOwnership(Product product) {
+        User merchant = currentUserProvider.getCurrentMerchant();
+
+        if(!product.getMerchant().getId().equals(merchant.getId())) {
+            throw new ForbiddenException("You do not have permission to update this product");
+        }
     }
 
     private ProductDetailResponse createProductDetailResponse(Product product) {

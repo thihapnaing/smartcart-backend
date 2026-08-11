@@ -117,6 +117,15 @@ public class ProductService {
         return createProductDetailResponse(saved);
     }
 
+    @Transactional
+    public ProductDetailResponse deactivateProduct(Long productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+        assertOwnership(product);
+        product.setStatus(ProductStatus.INACTIVE);
+        return createProductDetailResponse(productRepository.save(product));
+    }
+
     private void applyScalarUpdates(Product product, ProductRequest request, Category category) {
         product.setCategory(category);
         product.setName(request.getName());
@@ -168,6 +177,7 @@ public class ProductService {
                 .gender(product.getGender().name())
                 .categoryName(product.getCategory().getName())
                 .shopName(product.getShopName())
+                .status(product.getStatus().name())
                 .variants(variantDetailList)
                 .build();
     }

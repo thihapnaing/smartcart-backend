@@ -17,5 +17,6 @@ public class ProductDetailResponse {
     private String gender;
     private String categoryName;
     private String shopName;
+    private String status;
     private List<ProductVariantDetail> variants;
 }

@@ -59,4 +59,12 @@ public class ProductController {
         ProductDetailResponse response = productService.updateProduct(id, request);
         return ResponseEntity.ok(response);
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ProductDetailResponse> deactivateProduct(
+            @PathVariable Long id
+    ) {
+        ProductDetailResponse response = productService.deactivateProduct(id);
+        return ResponseEntity.ok(response);
+    }
 }

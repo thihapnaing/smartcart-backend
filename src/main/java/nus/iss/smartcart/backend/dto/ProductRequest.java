@@ -14,20 +14,27 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ProductUpdateRequest {
+public class ProductRequest {
+
     @NotBlank
     @Size(max = 200)
     private String name;
+
     private String description;
+
     @NotNull
     @DecimalMin(value = "0.01")
     private BigDecimal price;
+
     @NotNull
     private Gender gender;
+
     @NotNull
     private Long categoryId;
+
     @NotNull
     private ProductStatus status;
+
     @NotEmpty
     @Valid
     private List<VariantRequest> variants;

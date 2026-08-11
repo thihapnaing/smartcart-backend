@@ -196,8 +196,8 @@ class ProductServiceTest {
         variantRequest.setSize("M");
         variantRequest.setStock(10);
 
-        ProductCreateRequest request =
-                ProductCreateRequest.builder()
+        ProductRequest request =
+                ProductRequest.builder()
                                 .name("Classic Tee")
                                 .description("Soft cotton tee")
                                 .price(BigDecimal.valueOf(19.90))
@@ -231,7 +231,7 @@ class ProductServiceTest {
 
         when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
 
-        ProductCreateRequest request = ProductCreateRequest.builder()
+        ProductRequest request = ProductRequest.builder()
                         .categoryId(99L)
                         .build();
 
@@ -255,8 +255,8 @@ class ProductServiceTest {
         variantRequest.setSize("M");
         variantRequest.setStock(10);
 
-        ProductCreateRequest request =
-                ProductCreateRequest.builder()
+        ProductRequest request =
+                ProductRequest.builder()
                         .name("Classic Tee")
                         .description("Soft cotton tee")
                         .price(BigDecimal.valueOf(19.90))
@@ -316,7 +316,7 @@ class ProductServiceTest {
         requestVariant2.setSize("L");
         requestVariant2.setStock(10);
 
-        ProductUpdateRequest request = ProductUpdateRequest.builder()
+        ProductRequest request = ProductRequest.builder()
                 .name("White Tee")
                 .description("soft and made of cotton")
                 .price(BigDecimal.valueOf(1))

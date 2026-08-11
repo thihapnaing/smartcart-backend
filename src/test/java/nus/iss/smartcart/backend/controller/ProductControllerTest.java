@@ -1,7 +1,7 @@
 package nus.iss.smartcart.backend.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import nus.iss.smartcart.backend.dto.ProductCreateRequest;
+import nus.iss.smartcart.backend.dto.ProductRequest;
 import nus.iss.smartcart.backend.dto.ProductDetailResponse;
 import nus.iss.smartcart.backend.dto.VariantRequest;
 import nus.iss.smartcart.backend.model.Gender;
@@ -88,8 +88,8 @@ class ProductControllerTest {
         VariantRequest variant = new VariantRequest();
         variant.setSize("S");
         variant.setStock(10);
-        ProductCreateRequest request =
-                ProductCreateRequest.builder()
+        ProductRequest request =
+                ProductRequest.builder()
                         .name("White Tee")
                         .description("Soft and made of cotton")
                         .price(BigDecimal.valueOf(1))
@@ -111,7 +111,7 @@ class ProductControllerTest {
         VariantRequest variant = new VariantRequest();
         variant.setSize("S");
         variant.setStock(10);
-        ProductCreateRequest request = ProductCreateRequest.builder()
+        ProductRequest request = ProductRequest.builder()
                 .name("")
                 .description("Soft and made of cotton")
                 .price(BigDecimal.valueOf(1))

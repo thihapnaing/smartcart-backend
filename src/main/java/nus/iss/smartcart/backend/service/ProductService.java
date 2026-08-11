@@ -63,7 +63,7 @@ public class ProductService {
     }
 
     @Transactional
-    public ProductDetailResponse createProduct(ProductCreateRequest request) {
+    public ProductDetailResponse createProduct(ProductRequest request) {
         User merchant = currentUserProvider.getCurrentMerchant();
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new IllegalArgumentException(
@@ -100,7 +100,7 @@ public class ProductService {
     }
 
     @Transactional
-    public ProductDetailResponse updateProduct(Long productId, ProductUpdateRequest request) {
+    public ProductDetailResponse updateProduct(Long productId, ProductRequest request) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
 
@@ -117,7 +117,7 @@ public class ProductService {
         return createProductDetailResponse(saved);
     }
 
-    private void applyScalarUpdates(Product product, ProductUpdateRequest request, Category category) {
+    private void applyScalarUpdates(Product product, ProductRequest request, Category category) {
         product.setCategory(category);
         product.setName(request.getName());
         product.setDescription(request.getDescription());

@@ -10,9 +10,9 @@ import java.util.List;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
-    @Query("SELECT p FROM Product p WHERE " +
+    @Query("SELECT p FROM Product p WHERE p.status = 'ACTIVE' AND (" +
             "LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(p.description) LIKE LOWER(CONCAT('%', :keyword, '%'))"
+            "LOWER(p.description) LIKE LOWER(CONCAT('%', :keyword, '%')))"
     )
     List<Product> searchByKeyword(@Param("keyword") String keyword);
 
@@ -24,8 +24,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
      * (pass null to skip) - keyword matches name/description, category/gender match by name/enum,
      * newestFirst true sorts by createdAt desc, false leaves default ordering (by id).
      */
-    @Query("SELECT p FROM Product p WHERE " +
-            "(:keyword IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(p.description) LIKE LOWER(CONCAT('%', :keyword, '%'))) AND " +
+    //Added a status filter to only return 'ACTIVE' listings
+    @Query("SELECT p FROM Product p WHERE p.status = 'ACTIVE' AND (" +
+            "(:keyword IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(p.description) LIKE LOWER(CONCAT('%', :keyword, '%')))) AND " +
             "(:categoryName IS NULL OR LOWER(p.category.name) = LOWER(:categoryName)) AND " +
             "(:gender IS NULL OR p.gender = :gender) " +
             "ORDER BY CASE WHEN :newestFirst = true THEN p.createdAt END DESC, p.id ASC"

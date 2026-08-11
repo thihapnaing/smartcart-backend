@@ -18,9 +18,10 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(ProductController.class)
@@ -125,5 +126,77 @@ class ProductControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
         ).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void updateProduct_returnsOkWithProductData() throws Exception {
+        VariantRequest variant = new VariantRequest();
+        variant.setSize("S");
+        variant.setStock(10);
+        ProductRequest request = ProductRequest.builder()
+                .name("White Tee")
+                .description("Soft and made of cotton")
+                .price(BigDecimal.valueOf(1))
+                .gender(Gender.MEN)
+                .categoryId(1L)
+                .status(ProductStatus.ACTIVE)
+                .variants(List.of(variant))
+                .build();
+        ProductDetailResponse fakeResponse = ProductDetailResponse.builder()
+                .productId(1L)
+                .name("White Tee")
+                .status("ACTIVE")
+                .variants(List.of())
+                .build();
+
+        when(productService.updateProduct(eq(1L), any())).thenReturn(fakeResponse);
+
+        mockMvc.perform(put("/api/products/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+        ).andExpect(status().isOk())
+         .andExpect(jsonPath("$.name").value("White Tee"));
+    }
+
+    @Test
+    void updateProduct_missingName_returnsBadRequest() throws Exception {
+        VariantRequest variant = new VariantRequest();
+        variant.setSize("S");
+        variant.setStock(10);
+        ProductRequest request = ProductRequest.builder()
+                .name("")
+                .description("Soft and made of cotton")
+                .price(BigDecimal.valueOf(1))
+                .gender(Gender.MEN)
+                .categoryId(1L)
+                .status(ProductStatus.ACTIVE)
+                .variants(List.of(variant))
+                .build();
+
+        mockMvc.perform(put("/api/products/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+        ).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void deactivateProduct_returnsOkWithProductData() throws Exception {
+        ProductDetailResponse productDetailResponse =
+                ProductDetailResponse.builder()
+                        .productId(1L)
+                        .name("White Tee")
+                        .description("soft and white")
+                        .price(BigDecimal.ZERO)
+                        .imageUrl("")
+                        .gender("MEN")
+                        .categoryName("Tops")
+                        .shopName("SmartCart")
+                        .status("INACTIVE")
+                        .variants(List.of())
+                        .build();
+        when(productService.deactivateProduct(1L)).thenReturn(productDetailResponse);
+        mockMvc.perform(delete("/api/products/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("INACTIVE"));
     }
 }

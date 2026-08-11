@@ -2,6 +2,7 @@ package nus.iss.smartcart.backend.service;
 
 import jakarta.persistence.EntityNotFoundException;
 import nus.iss.smartcart.backend.dto.*;
+import nus.iss.smartcart.backend.exception.ForbiddenException;
 import nus.iss.smartcart.backend.model.*;
 import nus.iss.smartcart.backend.repository.CategoryRepository;
 import nus.iss.smartcart.backend.repository.ProductRepository;
@@ -156,6 +157,7 @@ class ProductServiceTest {
         when(product.getGender()).thenReturn(Gender.MEN);
         when(product.getCategory()).thenReturn(category);
         when(product.getShopName()).thenReturn("SmartCart Shop");
+        when(product.getStatus()).thenReturn(ProductStatus.ACTIVE);
         when(product.getVariants()).thenReturn(List.of(productVariant));
 
         when(productRepository.findById(1L)).thenReturn(Optional.of(product));
@@ -335,5 +337,50 @@ class ProductServiceTest {
         assertEquals(11, stockBySize.get("M"));
         assertEquals(10, stockBySize.get("L"));
         assertNull(stockBySize.get("S"));
+    }
+
+    @Test
+    void deactivateProduct_productNotFound_throwsEntityNotFoundException() {
+        when(productRepository.findById(1L)).thenReturn(Optional.empty());
+        assertThrows(EntityNotFoundException.class, () -> productService.deactivateProduct(1L));
+    }
+
+    @Test
+    void deactivateProduct_wrongMerchant_throwsForbiddenException() {
+        Product product = mock(Product.class);
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        User merchant = mock(User.class);
+        User merchant2 = mock(User.class);
+        when(currentUserProvider.getCurrentMerchant()).thenReturn(merchant);
+        when(product.getMerchant()).thenReturn(merchant2);
+        when(merchant2.getId()).thenReturn(2L);
+        when(merchant.getId()).thenReturn(1L);
+
+        assertThrows(ForbiddenException.class, () -> productService.deactivateProduct(1L));
+    }
+
+    @Test
+    void deactivateProduct_returnsOkWithProductData() {
+        User merchant = mock(User.class);
+        when(merchant.getId()).thenReturn(1L);
+
+        Category category = mock(Category.class);
+        when(category.getName()).thenReturn("Tops");
+
+        Product product = new Product();
+        product.setMerchant(merchant);
+        product.setName("White Tee");
+        product.setDescription("soft and made of cotton");
+        product.setPrice(BigDecimal.valueOf(1));
+        product.setCategory(category);
+        product.setGender(Gender.MEN);
+
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(currentUserProvider.getCurrentMerchant()).thenReturn(merchant);
+        when(productRepository.save(any(Product.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ProductDetailResponse response = productService.deactivateProduct(1L);
+
+        assertEquals(ProductStatus.INACTIVE.name(), response.getStatus());
     }
 }

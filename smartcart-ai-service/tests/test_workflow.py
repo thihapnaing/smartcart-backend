@@ -85,7 +85,7 @@ class _FakeCompletion:
 
 
 def _base_state(**overrides):
-    state = {"mode": "chat", "message": "hi", "history": [], "user_id": None}
+    state = {"message": "hi", "history": [], "user_id": None}
     state.update(overrides)
     return state
 
@@ -99,7 +99,7 @@ def test_run_agent_returns_reply_directly_when_model_makes_no_tool_calls():
 
         result = await _run_agent(_base_state(), client, "gpt-4o-mini", [], {})
 
-        assert result == {"reply": "Hello there!", "products": None, "based_on": None}
+        assert result == {"reply": "Hello there!", "products": None, "orders": None, "based_on": None}
         client.chat.completions.create.assert_awaited_once()
 
     asyncio.run(_run())
@@ -199,7 +199,7 @@ def test_build_smartcart_workflow_returns_setup_message_when_no_api_key_configur
         graph = build_smartcart_workflow(api_key=None)
 
         result = await graph.ainvoke({
-            "mode": "chat", "message": "hi", "history": [], "user_id": None,
+            "message": "hi", "history": [], "user_id": None,
             "reply": "", "products": None, "based_on": None,
         })
 

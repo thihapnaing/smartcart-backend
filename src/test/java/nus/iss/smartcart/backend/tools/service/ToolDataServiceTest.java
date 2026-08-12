@@ -2,6 +2,8 @@ package nus.iss.smartcart.backend.tools.service;
 
 // Author: Htet Nandar (Grace)
 
+import nus.iss.smartcart.backend.dto.CartItemDetail;
+import nus.iss.smartcart.backend.dto.CartItemsResponse;
 import nus.iss.smartcart.backend.dto.ProductSearchResult;
 import nus.iss.smartcart.backend.model.Category;
 import nus.iss.smartcart.backend.model.Order;
@@ -10,6 +12,7 @@ import nus.iss.smartcart.backend.model.OrderStatus;
 import nus.iss.smartcart.backend.model.Product;
 import nus.iss.smartcart.backend.model.ProductVariant;
 import nus.iss.smartcart.backend.repository.OrderRepository;
+import nus.iss.smartcart.backend.service.CartService;
 import nus.iss.smartcart.backend.service.ProductService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,6 +22,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.Month;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -46,8 +50,11 @@ class ToolDataServiceTest {
     @Mock
     private ProductService productService;
 
+    @Mock
+    private CartService cartService;
+
     private ToolDataService service() {
-        return new ToolDataService(orderRepository, productService);
+        return new ToolDataService(orderRepository, productService, cartService);
     }
 
     // ── Fixture builders ──────────────────────────────────────────────────
@@ -87,9 +94,9 @@ class ToolDataServiceTest {
     @Test
     void getOrderHistory_topCategoryComesFromTheMostRecentOrderFirst() {
         Order recentOrder = order(2L, new BigDecimal("50.00"), OrderStatus.DELIVERED,
-            LocalDateTime.of(2026, 8, 1, 10, 0), variantOf(category("Shoes")));
+            LocalDateTime.of(2026, Month.AUGUST, 1, 10, 0), variantOf(category("Shoes")));
         Order olderOrder = order(1L, new BigDecimal("30.00"), OrderStatus.DELIVERED,
-            LocalDateTime.of(2026, 7, 1, 10, 0), variantOf(category("Tops")));
+            LocalDateTime.of(2026, Month.JULY, 1, 10, 0), variantOf(category("Tops")));
         // Repository already returns most-recent-first per its derived query name.
         when(orderRepository.findByUserIdOrderByOrderDateDesc(42L)).thenReturn(List.of(recentOrder, olderOrder));
 
@@ -131,7 +138,7 @@ class ToolDataServiceTest {
     void getOrderHistory_mapsRecentOrdersAndCapsAtFive() {
         List<Order> sixOrders = new ArrayList<>();
         for (int i = 1; i <= 6; i++) {
-            sixOrders.add(order(i, new BigDecimal("10.00"), OrderStatus.PAID, LocalDateTime.of(2026, 1, i, 0, 0)));
+            sixOrders.add(order(i, new BigDecimal("10.00"), OrderStatus.PAID, LocalDateTime.of(2026, Month.JANUARY, i, 0, 0)));
         }
         when(orderRepository.findByUserIdOrderByOrderDateDesc(5L)).thenReturn(sixOrders);
 
@@ -250,5 +257,46 @@ class ToolDataServiceTest {
         List<Map<String, Object>> products = (List<Map<String, Object>>) result.get("products");
         assertEquals(1, products.size());
         assertEquals("Has Price", products.get(0).get("name"));
+    }
+
+    // ── getCart ──────────────────────────────────────────────────────────
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getCart_mapsItemsAndTotalsFromCartService() {
+        CartItemDetail item = CartItemDetail.builder()
+            .cartItemId(1L)
+            .productName("Tee")
+            .size("M")
+            .quantity(2)
+            .unitPrice(new BigDecimal("15.00"))
+            .subtotal(new BigDecimal("30.00"))
+            .build();
+        CartItemsResponse cart = new CartItemsResponse(List.of(item), new BigDecimal("30.00"));
+        when(cartService.getCart(42L)).thenReturn(cart);
+
+        Map<String, Object> result = service().getCart(42L);
+
+        List<Map<String, Object>> items = (List<Map<String, Object>>) result.get("items");
+        assertEquals(1, items.size());
+        assertEquals("Tee", items.get(0).get("productName"));
+        assertEquals("M", items.get(0).get("size"));
+        assertEquals(2, items.get(0).get("quantity"));
+        assertEquals(new BigDecimal("15.00"), items.get(0).get("unitPrice"));
+        assertEquals(new BigDecimal("30.00"), items.get(0).get("subtotal"));
+        assertEquals(new BigDecimal("30.00"), result.get("cartTotal"));
+        assertEquals(1, result.get("itemCount"));
+    }
+
+    @Test
+    void getCart_returnsEmptyItemsWhenCartIsEmpty() {
+        CartItemsResponse cart = new CartItemsResponse(List.of(), BigDecimal.ZERO);
+        when(cartService.getCart(99L)).thenReturn(cart);
+
+        Map<String, Object> result = service().getCart(99L);
+
+        assertEquals(List.of(), result.get("items"));
+        assertEquals(BigDecimal.ZERO, result.get("cartTotal"));
+        assertEquals(0, result.get("itemCount"));
     }
 }

@@ -23,6 +23,6 @@ public class ProductSearchResult {
 
     /** First variant's id - lets a quick "+ Add" action skip size selection for a single default variant. */
     private Long defaultVariantId;     // Author: Htet Nandar (Grace)
+    private String status;
     private List<ProductVariantSearchResult> variants;
-    // private String status;
 }

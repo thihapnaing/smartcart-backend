@@ -208,6 +208,7 @@ class ProductServiceTest {
                                 .categoryId(1L)
                                 .status(ProductStatus.ACTIVE)
                                 .variants(List.of(variantRequest))
+                                .imageUrl("https://res.cloudinary.com/demo/image/upload/sample.jpg")
                                 .build();
 
         when(productRepository.save(any(Product.class))).thenAnswer(invocation -> {
@@ -225,6 +226,7 @@ class ProductServiceTest {
         assertEquals(1, response.getVariants().size());
         assertEquals("M", response.getVariants().get(0).getSize());
         assertEquals(10, response.getVariants().get(0).getStock());
+        assertEquals("https://res.cloudinary.com/demo/image/upload/sample.jpg", response.getImageUrl());
     }
 
     @Test

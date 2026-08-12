@@ -5,13 +5,16 @@ import nus.iss.smartcart.backend.dto.ProductRequest;
 import nus.iss.smartcart.backend.dto.ProductDetailResponse;
 import nus.iss.smartcart.backend.dto.ProductSearchResult;
 import nus.iss.smartcart.backend.dto.VariantRequest;
+import nus.iss.smartcart.backend.exception.ImageUploadException;
 import nus.iss.smartcart.backend.model.Gender;
 import nus.iss.smartcart.backend.model.ProductStatus;
+import nus.iss.smartcart.backend.service.ImageUploadService;
 import nus.iss.smartcart.backend.service.ProductService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -32,6 +35,7 @@ class ProductControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean private ProductService productService;
+    @MockitoBean private ImageUploadService imageUploadService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -214,5 +218,30 @@ class ProductControllerTest {
         mockMvc.perform(get("/api/products/own"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("White Tee"));
+    }
+
+    @Test
+    void uploadImage_validFile_returnsOKWithImageUrl() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "test.png", "image/png", "fake-image-content".getBytes()
+        );
+
+        when(imageUploadService.uploadImage(any())).thenReturn("https://res.cloudinary.com/demo/sample.jpg");
+        mockMvc.perform(multipart("/api/products/image-upload")
+                .file(file)
+        )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.imageUrl").value("https://res.cloudinary.com/demo/sample.jpg"));
+    }
+
+    @Test
+    void uploadImage_serviceThrowsException_returnsBadRequest() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "test.pdf", "application/pdf", "fake-content".getBytes());
+
+        when(imageUploadService.uploadImage(any())).thenThrow(new ImageUploadException("Only PNG and JPEG images are allowed"));
+
+        mockMvc.perform(multipart("/api/products/image-upload").file(file))
+                .andExpect(status().isBadRequest());
     }
 }

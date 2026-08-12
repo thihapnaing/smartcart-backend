@@ -8,6 +8,7 @@ import nus.iss.smartcart.backend.dto.VariantRequest;
 import nus.iss.smartcart.backend.exception.ImageUploadException;
 import nus.iss.smartcart.backend.model.Gender;
 import nus.iss.smartcart.backend.model.ProductStatus;
+import nus.iss.smartcart.backend.service.ImageSearchService;
 import nus.iss.smartcart.backend.service.ImageUploadService;
 import nus.iss.smartcart.backend.service.ProductService;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,7 @@ class ProductControllerTest {
 
     @MockitoBean private ProductService productService;
     @MockitoBean private ImageUploadService imageUploadService;
+    @MockitoBean private ImageSearchService imageSearchService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -243,5 +245,25 @@ class ProductControllerTest {
 
         mockMvc.perform(multipart("/api/products/image-upload").file(file))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void activateProduct_returnsOKWithProductData() throws Exception {
+        ProductDetailResponse response = ProductDetailResponse.builder()
+                .productId(1L)
+                .name("White Tee")
+                .description("soft and white")
+                .price(BigDecimal.ZERO)
+                .imageUrl("")
+                .gender("MEN")
+                .categoryName("Tops")
+                .shopName("SmartCart")
+                .status("ACTIVE")
+                .variants(List.of())
+                .build();
+        when(productService.activateProduct(1L)).thenReturn(response);
+        mockMvc.perform(patch("/api/products/1/activate"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACTIVE"));
     }
 }

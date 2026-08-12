@@ -1,12 +1,14 @@
 package nus.iss.smartcart.backend.model;
 
 import jakarta.persistence.*;
+import lombok.Setter;
 
 @Entity
 @Table(
         name = "product_variant",
         uniqueConstraints = @UniqueConstraint(columnNames = {"product_id", "size"})
 )
+@Setter
 public class ProductVariant {
 
     public ProductVariant() {
@@ -33,20 +35,8 @@ public class ProductVariant {
         return size;
     }
 
-    public void setSize(String size) {
-        this.size = size;
-    }
-
     public Integer getStock() {
         return stock;
-    }
-
-    public void setStock(Integer stock) {
-        this.stock = stock;
-    }
-
-    public void setProduct(Product product) {
-        this.product = product;
     }
 
     public Product getProduct() {

@@ -1,13 +1,15 @@
 package nus.iss.smartcart.backend.dto;
 
-import lombok.Builder;
-import lombok.Getter;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.util.List;
 
 @Getter
+@Setter
 @Builder
+@AllArgsConstructor(access = AccessLevel.PUBLIC)
+@NoArgsConstructor
 public class ProductDetailResponse {
     private Long productId;
     private String name;

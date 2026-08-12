@@ -1,8 +1,6 @@
 package nus.iss.smartcart.backend.dto;
 
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -10,6 +8,8 @@ import java.util.List;
 @Builder
 @Getter
 @Setter
+@AllArgsConstructor(access = AccessLevel.PUBLIC)
+@NoArgsConstructor
 public class ProductSearchResult {
     private Long id;
     private String name;

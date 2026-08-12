@@ -76,3 +76,9 @@ langchain-mcp-adapters>=0.3,<0.4
 # store instead of certifi, so anything Windows already trusts, Python does
 # too. Just needs to be installed - no code changes required to use it.
 pip-system-certs>=4.0
+
+# ==========================
+# Test
+# ==========================
+
+pytest

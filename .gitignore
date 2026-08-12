@@ -57,3 +57,18 @@ bin/
 # ==========================================
 .DS_Store
 Thumbs.db
+
+# ==========================================
+# Python Cache & AI Service
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Chroma DB & Vector Store
+smartcart-ai-service/chroma_db/

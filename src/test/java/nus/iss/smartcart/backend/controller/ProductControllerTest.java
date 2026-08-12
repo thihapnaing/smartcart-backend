@@ -6,6 +6,7 @@ import nus.iss.smartcart.backend.dto.ProductDetailResponse;
 import nus.iss.smartcart.backend.dto.ProductRequest;
 import nus.iss.smartcart.backend.dto.ProductSearchResult;
 import nus.iss.smartcart.backend.model.Gender;
+import nus.iss.smartcart.backend.model.ProductStatus;
 import nus.iss.smartcart.backend.service.ImageSearchService;
 import nus.iss.smartcart.backend.service.ImageUploadService;
 import nus.iss.smartcart.backend.service.ProductService;
@@ -46,15 +47,9 @@ class ProductControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockitoBean
-    private ProductService productService;
-
-    @MockitoBean
-    private ImageSearchService imageSearchService;
-
-    @MockitoBean
-    private ImageUploadService imageUploadService;
-
+    @MockitoBean private ProductService productService;
+    @MockitoBean private ImageUploadService imageUploadService;
+    @MockitoBean private ImageSearchService imageSearchService;
 
     // ============================================================
     // GET /api/products/search
@@ -498,5 +493,25 @@ class ProductControllerTest {
         response.setStatus("ACTIVE");
 
         return response;
+    }
+
+    @Test
+    void activateProduct_returnsOKWithProductData() throws Exception {
+        ProductDetailResponse response = ProductDetailResponse.builder()
+                .productId(1L)
+                .name("White Tee")
+                .description("soft and white")
+                .price(BigDecimal.ZERO)
+                .imageUrl("")
+                .gender("MEN")
+                .categoryName("Tops")
+                .shopName("SmartCart")
+                .status("ACTIVE")
+                .variants(List.of())
+                .build();
+        when(productService.activateProduct(1L)).thenReturn(response);
+        mockMvc.perform(patch("/api/products/1/activate"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACTIVE"));
     }
 }

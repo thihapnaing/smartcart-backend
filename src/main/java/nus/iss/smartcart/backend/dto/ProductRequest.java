@@ -14,7 +14,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ProductCreateRequest {
+public class ProductRequest {
 
     @NotBlank
     @Size(max = 200)

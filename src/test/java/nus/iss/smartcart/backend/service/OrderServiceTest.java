@@ -1,11 +1,14 @@
 package nus.iss.smartcart.backend.service;
 
 import jakarta.persistence.EntityNotFoundException;
+import lombok.extern.slf4j.Slf4j;
 import nus.iss.smartcart.backend.dto.CartItemDetail;
 import nus.iss.smartcart.backend.dto.CheckoutRequest;
 import nus.iss.smartcart.backend.dto.CheckoutResponse;
+import nus.iss.smartcart.backend.dto.MerchantOrderItemResponse;
 import nus.iss.smartcart.backend.model.*;
 import nus.iss.smartcart.backend.repository.*;
+import nus.iss.smartcart.backend.security.CurrentUserProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,6 +24,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+@Slf4j
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
     @Mock private CartRepository cartRepository;
@@ -30,6 +34,7 @@ class OrderServiceTest {
     @Mock private OrderRepository orderRepository;
     @Mock private OrderItemRepository orderItemRepository;
     @Mock private PaymentRepository paymentRepository;
+    @Mock private CurrentUserProvider currentUserProvider;
     @Mock private Cart cart;
 
     @InjectMocks private OrderService orderService;
@@ -250,6 +255,40 @@ class OrderServiceTest {
         assertEquals(BigDecimal.valueOf(50), detail.getSubtotal());
         assertEquals("MEN", detail.getGender());
         assertEquals("Tops", detail.getCategoryName());
+    }
+
+    @Test
+    void getMerchantOrderItems_returnsPopulatedResponse() {
+        User merchant = mock(User.class);
+        when(merchant.getId()).thenReturn(1L);
+        when(currentUserProvider.getCurrentMerchant()).thenReturn(merchant);
+
+        Order order = mock(Order.class);
+        when(order.getId()).thenReturn(1L);
+        when(order.getStatus()).thenReturn(OrderStatus.PAID);
+        when(order.getFirstName()).thenReturn("John");
+        when(order.getLastName()).thenReturn("Tan");
+
+        Product product = mock(Product.class);
+        when(product.getName()).thenReturn("White Tee");
+
+        ProductVariant productVariant = mock(ProductVariant.class);
+        when(productVariant.getProduct()).thenReturn(product);
+        when(productVariant.getSize()).thenReturn("S");
+
+        OrderItem orderItem = mock(OrderItem.class);
+        when(orderItem.getOrder()).thenReturn(order);
+        when(orderItem.getProductVariant()).thenReturn(productVariant);
+        when(orderItem.getQuantity()).thenReturn(10);
+        when(orderItem.getUnitPrice()).thenReturn(BigDecimal.valueOf(1));
+
+        when(orderItemRepository.findByProductVariantProductMerchantId(1L)).thenReturn(List.of(orderItem));
+
+        List<MerchantOrderItemResponse> responseList = orderService.getMerchantOrderItems();
+        assertEquals(1, responseList.size());
+        MerchantOrderItemResponse response = responseList.get(0);
+        assertEquals(1L, response.getOrderId());
+        assertEquals("John", response.getBuyerFirstName());
     }
 
 }

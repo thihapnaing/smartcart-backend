@@ -2,6 +2,7 @@ package nus.iss.smartcart.backend.service;
 
 import jakarta.persistence.EntityNotFoundException;
 import nus.iss.smartcart.backend.dto.*;
+import nus.iss.smartcart.backend.exception.ForbiddenException;
 import nus.iss.smartcart.backend.model.*;
 import nus.iss.smartcart.backend.repository.CategoryRepository;
 import nus.iss.smartcart.backend.repository.ProductRepository;
@@ -16,7 +17,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -48,6 +51,7 @@ class ProductServiceTest {
         when(product.getShopName()).thenReturn("SmartCart Shop");
         when(product.getCategory()).thenReturn(category);
         when(product.getGender()).thenReturn(Gender.MEN);
+        when(product.getStatus()).thenReturn(ProductStatus.ACTIVE);
         when(product.getVariants()).thenReturn(List.of(productVariant));
 
         when(productRepository.searchByKeyword("shirt")).thenReturn(List.of(product));
@@ -79,6 +83,7 @@ class ProductServiceTest {
         when(product.getShopName()).thenReturn("SmartCart Shop");
         when(product.getCategory()).thenReturn(category);
         when(product.getGender()).thenReturn(Gender.MEN);
+        when(product.getStatus()).thenReturn(ProductStatus.ACTIVE);
         when(product.getVariants()).thenReturn(List.of());
 
         when(productRepository.searchByKeyword("shirt")).thenReturn(List.of(product));
@@ -112,11 +117,10 @@ class ProductServiceTest {
         when(product1.getImageUrl()).thenReturn("/assets/products/product1");
         when(product1.getShopName()).thenReturn("SmartCart Shop");
         when(product1.getCategory()).thenReturn(category);
+        when(product1.getStatus()).thenReturn(ProductStatus.ACTIVE);
         when(product1.getGender()).thenReturn(Gender.MEN);
         when(product1.getVariants()).thenReturn(List.of(productVariant));
 
-        // product2 is never stubbed — since limit(1) runs before map(), it should
-        // never be touched by toSearchResult, proving the limit cuts the stream early
         Product product2 = mock(Product.class);
 
         when(productRepository.search(null, null, null, false, ProductStatus.ACTIVE))
@@ -154,6 +158,7 @@ class ProductServiceTest {
         when(product.getGender()).thenReturn(Gender.MEN);
         when(product.getCategory()).thenReturn(category);
         when(product.getShopName()).thenReturn("SmartCart Shop");
+        when(product.getStatus()).thenReturn(ProductStatus.ACTIVE);
         when(product.getVariants()).thenReturn(List.of(productVariant));
 
         when(productRepository.findById(1L)).thenReturn(Optional.of(product));
@@ -194,8 +199,8 @@ class ProductServiceTest {
         variantRequest.setSize("M");
         variantRequest.setStock(10);
 
-        ProductCreateRequest request =
-                ProductCreateRequest.builder()
+        ProductRequest request =
+                ProductRequest.builder()
                                 .name("Classic Tee")
                                 .description("Soft cotton tee")
                                 .price(BigDecimal.valueOf(19.90))
@@ -229,7 +234,7 @@ class ProductServiceTest {
 
         when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
 
-        ProductCreateRequest request = ProductCreateRequest.builder()
+        ProductRequest request = ProductRequest.builder()
                         .categoryId(99L)
                         .build();
 
@@ -253,8 +258,8 @@ class ProductServiceTest {
         variantRequest.setSize("M");
         variantRequest.setStock(10);
 
-        ProductCreateRequest request =
-                ProductCreateRequest.builder()
+        ProductRequest request =
+                ProductRequest.builder()
                         .name("Classic Tee")
                         .description("Soft cotton tee")
                         .price(BigDecimal.valueOf(19.90))
@@ -275,7 +280,141 @@ class ProductServiceTest {
         assertEquals("smartcart_official", response.getShopName());
     }
 
+    @Test
+    void updateProduct_mergesVariantsCorrectly() {
+        User merchant = mock(User.class);
+        when(merchant.getId()).thenReturn(1L);
+        when(currentUserProvider.getCurrentMerchant()).thenReturn(merchant);
 
+        Product existingProduct = new Product();
+        existingProduct.setMerchant(merchant);
+        List<ProductVariant> productVariants = existingProduct.getVariants();
 
+        ProductVariant variant1 = new ProductVariant();
+        variant1.setProduct(existingProduct);
+        variant1.setSize("S");
+        variant1.setStock(10);
 
+        ProductVariant variant2 = new ProductVariant();
+        variant2.setProduct(existingProduct);
+        variant2.setSize("M");
+        variant2.setStock(5);
+
+        productVariants.add(variant1);
+        productVariants.add(variant2);
+        existingProduct.setVariants(productVariants);
+
+        when(productRepository.findById(1L)).thenReturn(Optional.of(existingProduct));
+
+        Category category = mock(Category.class);
+        when(category.getName()).thenReturn("Tops");
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+
+        when(productRepository.save(any(Product.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        VariantRequest requestVariant1 = new VariantRequest();
+        requestVariant1.setSize("M");
+        requestVariant1.setStock(11);
+        VariantRequest requestVariant2 = new VariantRequest();
+        requestVariant2.setSize("L");
+        requestVariant2.setStock(10);
+
+        ProductRequest request = ProductRequest.builder()
+                .name("White Tee")
+                .description("soft and made of cotton")
+                .price(BigDecimal.valueOf(1))
+                .gender(Gender.MEN)
+                .categoryId(1L)
+                .status(ProductStatus.ACTIVE)
+                .variants(List.of(requestVariant1, requestVariant2))
+                .build();
+
+        ProductDetailResponse response = productService.updateProduct(1L, request);
+
+        Map<String, Integer> stockBySize = response.getVariants().stream()
+                .collect(Collectors.toMap(ProductVariantDetail::getSize, ProductVariantDetail::getStock));
+
+        assertEquals(2, response.getVariants().size());
+        assertEquals(11, stockBySize.get("M"));
+        assertEquals(10, stockBySize.get("L"));
+        assertNull(stockBySize.get("S"));
+    }
+
+    @Test
+    void deactivateProduct_productNotFound_throwsEntityNotFoundException() {
+        when(productRepository.findById(1L)).thenReturn(Optional.empty());
+        assertThrows(EntityNotFoundException.class, () -> productService.deactivateProduct(1L));
+    }
+
+    @Test
+    void deactivateProduct_wrongMerchant_throwsForbiddenException() {
+        Product product = mock(Product.class);
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        User merchant = mock(User.class);
+        User merchant2 = mock(User.class);
+        when(currentUserProvider.getCurrentMerchant()).thenReturn(merchant);
+        when(product.getMerchant()).thenReturn(merchant2);
+        when(merchant2.getId()).thenReturn(2L);
+        when(merchant.getId()).thenReturn(1L);
+
+        assertThrows(ForbiddenException.class, () -> productService.deactivateProduct(1L));
+    }
+
+    @Test
+    void deactivateProduct_returnsOkWithProductData() {
+        User merchant = mock(User.class);
+        when(merchant.getId()).thenReturn(1L);
+
+        Category category = mock(Category.class);
+        when(category.getName()).thenReturn("Tops");
+
+        Product product = new Product();
+        product.setMerchant(merchant);
+        product.setName("White Tee");
+        product.setDescription("soft and made of cotton");
+        product.setPrice(BigDecimal.valueOf(1));
+        product.setCategory(category);
+        product.setGender(Gender.MEN);
+
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(currentUserProvider.getCurrentMerchant()).thenReturn(merchant);
+        when(productRepository.save(any(Product.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ProductDetailResponse response = productService.deactivateProduct(1L);
+
+        assertEquals(ProductStatus.INACTIVE.name(), response.getStatus());
+    }
+
+    @Test
+    void getMerchantProducts_returnsMappedResults() {
+        User merchant = mock(User.class);
+        when(merchant.getId()).thenReturn(1L);
+        when(currentUserProvider.getCurrentMerchant()).thenReturn(merchant);
+
+        Category category = mock(Category.class);
+        when(category.getName()).thenReturn("Tops");
+
+        ProductVariant variant = mock(ProductVariant.class);
+        when(variant.getId()).thenReturn(1L);
+
+        Product product = mock(Product.class);
+        when(product.getId()).thenReturn(1L);
+        when(product.getName()).thenReturn("White Tee");
+        when(product.getDescription()).thenReturn("White and soft");
+        when(product.getPrice()).thenReturn(BigDecimal.valueOf(50));
+        when(product.getImageUrl()).thenReturn("/assets/products/product1");
+        when(product.getShopName()).thenReturn("SmartCart Shop");
+        when(product.getCategory()).thenReturn(category);
+        when(product.getGender()).thenReturn(Gender.MEN);
+        when(product.getStatus()).thenReturn(ProductStatus.ACTIVE);
+        when(product.getVariants()).thenReturn(List.of(variant));
+
+        when(productRepository.findByMerchantId(1L)).thenReturn(List.of(product));
+
+        List<ProductSearchResult> results = productService.getMerchantProducts();
+
+        assertEquals(1, results.size());
+        assertEquals("White Tee", results.get(0).getName());
+        assertEquals("ACTIVE", results.get(0).getStatus());
+    }
 }

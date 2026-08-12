@@ -11,12 +11,8 @@ import java.util.List;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
-    // Author: Htet Nandar (Grace)
-    // ACTIVE-only filter added so admin moderation (setting a product to INACTIVE) actually
-    // hides it from the customer-facing keyword search, not just the AI chat's browse endpoint.
-    @Query("SELECT p FROM Product p WHERE " +
-            "p.status = nus.iss.smartcart.backend.model.ProductStatus.ACTIVE AND " +
-            "(LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+    @Query("SELECT p FROM Product p WHERE p.status = 'ACTIVE' AND (" +
+            "LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "LOWER(p.description) LIKE LOWER(CONCAT('%', :keyword, '%')))"
     )
     List<Product> searchByKeyword(@Param("keyword") String keyword);
@@ -37,10 +33,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             "ORDER BY CASE WHEN :newestFirst = true THEN p.createdAt END DESC, p.id ASC"
     )
     List<Product> search(@Param("keyword") String keyword,
-                         @Param("categoryName") String categoryName,
-                         @Param("gender") Gender gender,
-                         @Param("newestFirst") boolean newestFirst,
-                         @Param("status") ProductStatus status);
+                          @Param("categoryName") String categoryName,
+                          @Param("gender") Gender gender,
+                          @Param("newestFirst") boolean newestFirst,
+                          @Param("status") ProductStatus status);
+
+    List<Product> findByMerchantId(Long merchantId);
 
     // Admin moderation queue - deliberately unfiltered by status, so admins can see and
     // reactivate previously-deactivated listings too, not just the active ones.

@@ -47,4 +47,12 @@ class GlobalExceptionHandlerTest {
         assertEquals("Requested quantity exceeds available stock", response.getBody().getMessage());
         assertEquals(400, response.getBody().getStatus());
     }
+
+    @Test
+    void handleForbiddenRequest_returns403WithMessage() {
+        ForbiddenException ex = new ForbiddenException("You do not have permission to update this product");
+        ResponseEntity<ErrorResponse> response = handler.handleForbiddenRequest(ex);
+        assertEquals("You do not have permission to update this product", response.getBody().getMessage());
+        assertEquals(403, response.getBody().getStatus());
+    }
 }

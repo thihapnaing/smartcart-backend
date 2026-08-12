@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS product (
     user_id BIGINT,
     shop_name VARCHAR(255),
     status VARCHAR(50),
+    admin_locked BOOLEAN,
     created_at TIMESTAMP,
     PRIMARY KEY (id)
 );

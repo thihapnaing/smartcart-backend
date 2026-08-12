@@ -119,7 +119,7 @@ class ProductServiceTest {
         // never be touched by toSearchResult, proving the limit cuts the stream early
         Product product2 = mock(Product.class);
 
-        when(productRepository.search(null, null, null, false))
+        when(productRepository.search(null, null, null, false, ProductStatus.ACTIVE))
                 .thenReturn(List.of(product1, product2));
 
         List<ProductSearchResult> results = productService.search(null, null, null, false, 0);

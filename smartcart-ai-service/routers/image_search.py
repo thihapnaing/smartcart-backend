@@ -19,16 +19,15 @@ cnn_service: CNNService | None = None
 
 @router.post("/image-search")
 async def image_search(
-    file: UploadFile = File(...)
+    image: UploadFile = File(...)
 ):
-
     if cnn_service is None:
         raise HTTPException(
             status_code=500,
             detail="CNN Service is not initialized."
         )
 
-    image_bytes = await file.read()
+    image_bytes = await image.read()
 
     return cnn_service.search(image_bytes)
 

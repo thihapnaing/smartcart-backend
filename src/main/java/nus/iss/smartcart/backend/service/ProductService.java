@@ -47,7 +47,7 @@ public class ProductService {
      */
     @Transactional(readOnly = true)
     public List<ProductSearchResult> search(String keyword, String categoryName, Gender gender, boolean newestFirst, int limit) {
-        List<Product> products = productRepository.search(keyword, categoryName, gender, newestFirst);
+        List<Product> products = productRepository.search(keyword, categoryName, gender, newestFirst, ProductStatus.ACTIVE);
         return products.stream()
                 .limit(Math.max(1, limit))
                 .map(this::toSearchResult)

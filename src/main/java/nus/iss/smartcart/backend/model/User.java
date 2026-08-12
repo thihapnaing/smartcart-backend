@@ -9,8 +9,10 @@ import java.time.ZoneId;
 @Table(name = "smartcart_user")
 public class User {
 
-    // Required by JPA - Hibernate instantiates entities via reflection when loading from the DB.
-    public User() {}
+
+    public User() {
+        // Required by JPA - Hibernate instantiates entities via reflection when loading from the DB.
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -46,6 +48,10 @@ public class User {
 
     public String getUsername() {
         return username;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public void setUsername(String username) {

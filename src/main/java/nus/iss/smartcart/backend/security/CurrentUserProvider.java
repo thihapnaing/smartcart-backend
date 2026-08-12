@@ -25,4 +25,13 @@ public class CurrentUserProvider {
                         "Seed data missing: expected customer id=2 (grace)"
                 ));
     }
+
+    // AUTHOR: Htet Nandar(Grace)
+    // once JWT auth is implemented, replace with SecurityContextHolder lookup, and verify the token's role is ADMIN.
+    public User getCurrentAdmin() {
+        return userRepository.findById(4L)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Seed data missing: expected admin id=4 (admin)"
+                ));
+    }
 }

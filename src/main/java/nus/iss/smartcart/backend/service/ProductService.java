@@ -211,7 +211,7 @@ public class ProductService {
     }
 
     public ProductSearchResult toSearchResult(Product product) {
-        Long defaultVariantId = product.getVariants().isEmpty() ? null : product.getVariants().get(0).getId(); // Author: Htet Nandar (Grace)
+        Long defaultVariantId = product.getVariants().isEmpty() ? null : product.getVariants().get(0).getId();
         List<ProductVariantSearchResult> variants =
                 product.getVariants()
                         .stream()
@@ -242,6 +242,7 @@ public class ProductService {
                                 : null
                 )
                 .color(product.getColor())
+                .status(product.getStatus() != null ? product.getStatus().name() : null)
                 .defaultVariantId(defaultVariantId)
                 .variants(variants)
                 .build();

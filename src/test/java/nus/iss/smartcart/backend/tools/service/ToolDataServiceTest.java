@@ -2,6 +2,8 @@ package nus.iss.smartcart.backend.tools.service;
 
 // Author: Htet Nandar (Grace)
 
+import nus.iss.smartcart.backend.dto.CartItemDetail;
+import nus.iss.smartcart.backend.dto.CartItemsResponse;
 import nus.iss.smartcart.backend.dto.ProductSearchResult;
 import nus.iss.smartcart.backend.model.Category;
 import nus.iss.smartcart.backend.model.Order;
@@ -255,5 +257,46 @@ class ToolDataServiceTest {
         List<Map<String, Object>> products = (List<Map<String, Object>>) result.get("products");
         assertEquals(1, products.size());
         assertEquals("Has Price", products.get(0).get("name"));
+    }
+
+    // ── getCart ──────────────────────────────────────────────────────────
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getCart_mapsItemsAndTotalsFromCartService() {
+        CartItemDetail item = CartItemDetail.builder()
+            .cartItemId(1L)
+            .productName("Tee")
+            .size("M")
+            .quantity(2)
+            .unitPrice(new BigDecimal("15.00"))
+            .subtotal(new BigDecimal("30.00"))
+            .build();
+        CartItemsResponse cart = new CartItemsResponse(List.of(item), new BigDecimal("30.00"));
+        when(cartService.getCart(42L)).thenReturn(cart);
+
+        Map<String, Object> result = service().getCart(42L);
+
+        List<Map<String, Object>> items = (List<Map<String, Object>>) result.get("items");
+        assertEquals(1, items.size());
+        assertEquals("Tee", items.get(0).get("productName"));
+        assertEquals("M", items.get(0).get("size"));
+        assertEquals(2, items.get(0).get("quantity"));
+        assertEquals(new BigDecimal("15.00"), items.get(0).get("unitPrice"));
+        assertEquals(new BigDecimal("30.00"), items.get(0).get("subtotal"));
+        assertEquals(new BigDecimal("30.00"), result.get("cartTotal"));
+        assertEquals(1, result.get("itemCount"));
+    }
+
+    @Test
+    void getCart_returnsEmptyItemsWhenCartIsEmpty() {
+        CartItemsResponse cart = new CartItemsResponse(List.of(), BigDecimal.ZERO);
+        when(cartService.getCart(99L)).thenReturn(cart);
+
+        Map<String, Object> result = service().getCart(99L);
+
+        assertEquals(List.of(), result.get("items"));
+        assertEquals(BigDecimal.ZERO, result.get("cartTotal"));
+        assertEquals(0, result.get("itemCount"));
     }
 }

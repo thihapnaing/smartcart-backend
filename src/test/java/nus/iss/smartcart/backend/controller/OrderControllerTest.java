@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import nus.iss.smartcart.backend.dto.CheckoutRequest;
 import nus.iss.smartcart.backend.dto.CheckoutResponse;
 import nus.iss.smartcart.backend.dto.DeliveryDetails;
+import nus.iss.smartcart.backend.dto.MerchantOrderItemResponse;
 import nus.iss.smartcart.backend.model.OrderStatus;
 import nus.iss.smartcart.backend.model.PaymentMethod;
 import nus.iss.smartcart.backend.model.User;
@@ -22,9 +23,10 @@ import java.util.List;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(OrderController.class)
 class OrderControllerTest {
@@ -87,5 +89,26 @@ class OrderControllerTest {
         when(orderService.getOrderDetail(1L, 2L)).thenReturn(response);
         mockMvc.perform(get("/api/orders/1"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void getMerchantOrderItems_returnsOkWithResults() throws Exception {
+        MerchantOrderItemResponse fakeItem = MerchantOrderItemResponse.builder()
+                .orderId(1L)
+                .productName("White Tee")
+                .size("S")
+                .quantity(10)
+                .unitPrice(BigDecimal.valueOf(1))
+                .subtotal(BigDecimal.valueOf(10))
+                .orderStatus("PAID")
+                .buyerFirstName("John")
+                .buyerLastName("Tan")
+                .build();
+
+        when(orderService.getMerchantOrderItems()).thenReturn(List.of(fakeItem));
+        mockMvc.perform(get("/api/orders/merchant"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].productName").value("White Tee"))
+                .andExpect(jsonPath("$[0].buyerFirstName").value("John"));
     }
 }

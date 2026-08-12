@@ -210,19 +210,40 @@ public class ProductService {
                 .build();
     }
 
-    private ProductSearchResult toSearchResult(Product product) {
+    public ProductSearchResult toSearchResult(Product product) {
         Long defaultVariantId = product.getVariants().isEmpty() ? null : product.getVariants().get(0).getId(); // Author: Htet Nandar (Grace)
+        List<ProductVariantSearchResult> variants =
+                product.getVariants()
+                        .stream()
+                        .map(variant ->
+                                ProductVariantSearchResult.builder()
+                                        .id(variant.getId())
+                                        .size(variant.getSize())
+                                        .stock(variant.getStock())
+                                        .build()
+                        )
+                        .toList();
+
         return ProductSearchResult.builder()
-                    .id(product.getId())
-                    .name(product.getName())
-                    .description(product.getDescription())
-                    .price(product.getPrice())
-                    .imageUrl(product.getImageUrl())
-                    .shopName(product.getShopName())
-                    .categoryName(product.getCategory().getName())
-                    .gender(product.getGender().name())
-                    .defaultVariantId(defaultVariantId)
-                    .status(product.getStatus().name())
-                    .build();
+                .id(product.getId())
+                .name(product.getName())
+                .description(product.getDescription())
+                .price(product.getPrice())
+                .imageUrl(product.getImageUrl())
+                .shopName(product.getShopName())
+                .categoryName(
+                        product.getCategory() != null
+                                ? product.getCategory().getName()
+                                : null
+                )
+                .gender(
+                        product.getGender() != null
+                                ? product.getGender().name()
+                                : null
+                )
+                .color(product.getColor())
+                .defaultVariantId(defaultVariantId)
+                .variants(variants)
+                .build();
     }
 }

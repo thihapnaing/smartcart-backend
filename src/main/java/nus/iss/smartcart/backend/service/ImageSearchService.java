@@ -16,8 +16,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
-
-import java.io.IOException;
 import java.util.List;
 
 @Service
@@ -158,9 +156,9 @@ public class ImageSearchService {
             Gender gender;
 
             if ("woman".equalsIgnoreCase(aiResponse.getGender())) {
-                gender = Gender.WOMAN;
+                gender = Gender.WOMEN;
             } else if ("man".equalsIgnoreCase(aiResponse.getGender())) {
-                gender = Gender.MAN;
+                gender = Gender.MEN;
             } else {
                 throw new IllegalArgumentException(
                         "Unknown gender from AI: "

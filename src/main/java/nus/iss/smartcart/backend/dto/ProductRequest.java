@@ -35,6 +35,8 @@ public class ProductRequest {
     @NotNull
     private ProductStatus status;
 
+    private String imageUrl;
+
     @NotEmpty
     @Valid
     private List<VariantRequest> variants;

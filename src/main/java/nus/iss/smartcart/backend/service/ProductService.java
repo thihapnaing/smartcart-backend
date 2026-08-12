@@ -82,6 +82,7 @@ public class ProductService {
         product.setCategory(category);
         product.setMerchant(merchant);
         product.setShopName(shopName);
+        product.setImageUrl(request.getImageUrl());
         product.setStatus(request.getStatus());
 
         List<ProductVariant> variants = request.getVariants().stream()
@@ -140,6 +141,7 @@ public class ProductService {
         product.setDescription(request.getDescription());
         product.setPrice(request.getPrice());
         product.setGender(request.getGender());
+        product.setImageUrl(request.getImageUrl());
         product.setStatus(request.getStatus());
     }
 

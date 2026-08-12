@@ -2,11 +2,13 @@ package nus.iss.smartcart.backend.tools.service;
 
 // Author: Htet Nandar (Grace)
 
+import nus.iss.smartcart.backend.dto.CartItemsResponse;
 import nus.iss.smartcart.backend.dto.ProductSearchResult;
 import nus.iss.smartcart.backend.model.Gender;
 import nus.iss.smartcart.backend.model.Order;
 import nus.iss.smartcart.backend.model.OrderItem;
 import nus.iss.smartcart.backend.repository.OrderRepository;
+import nus.iss.smartcart.backend.service.CartService;
 import nus.iss.smartcart.backend.service.ProductService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,10 +29,12 @@ public class ToolDataService {
 
     private final OrderRepository orderRepository;
     private final ProductService productService;
+    private final CartService cartService;
 
-    public ToolDataService(OrderRepository orderRepository, ProductService productService) {
+    public ToolDataService(OrderRepository orderRepository, ProductService productService, CartService cartService) {
         this.orderRepository = orderRepository;
         this.productService = productService;
+        this.cartService = cartService;
     }
 
     @Transactional
@@ -101,6 +105,26 @@ public class ToolDataService {
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("products", products);
+        return result;
+    }
+
+    public Map<String, Object> getCart(Long userId) {
+        CartItemsResponse cart = cartService.getCart(userId);
+        List<Map<String, Object>> items = cart.getCartItemDetails().stream()
+                .map(i -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("productName", i.getProductName());
+                    m.put("size", i.getSize());
+                    m.put("quantity", i.getQuantity());
+                    m.put("unitPrice", i.getUnitPrice());
+                    m.put("subtotal", i.getSubtotal());
+                    return m;
+                })
+                .toList();
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("items", items);
+        result.put("cartTotal", cart.getCartTotal());
+        result.put("itemCount", items.size());
         return result;
     }
 }

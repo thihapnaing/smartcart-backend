@@ -10,6 +10,7 @@ import nus.iss.smartcart.backend.model.OrderStatus;
 import nus.iss.smartcart.backend.model.Product;
 import nus.iss.smartcart.backend.model.ProductVariant;
 import nus.iss.smartcart.backend.repository.OrderRepository;
+import nus.iss.smartcart.backend.service.CartService;
 import nus.iss.smartcart.backend.service.ProductService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,6 +20,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.Month;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -46,8 +48,11 @@ class ToolDataServiceTest {
     @Mock
     private ProductService productService;
 
+    @Mock
+    private CartService cartService;
+
     private ToolDataService service() {
-        return new ToolDataService(orderRepository, productService);
+        return new ToolDataService(orderRepository, productService, cartService);
     }
 
     // ── Fixture builders ──────────────────────────────────────────────────
@@ -87,9 +92,9 @@ class ToolDataServiceTest {
     @Test
     void getOrderHistory_topCategoryComesFromTheMostRecentOrderFirst() {
         Order recentOrder = order(2L, new BigDecimal("50.00"), OrderStatus.DELIVERED,
-            LocalDateTime.of(2026, 8, 1, 10, 0), variantOf(category("Shoes")));
+            LocalDateTime.of(2026, Month.AUGUST, 1, 10, 0), variantOf(category("Shoes")));
         Order olderOrder = order(1L, new BigDecimal("30.00"), OrderStatus.DELIVERED,
-            LocalDateTime.of(2026, 7, 1, 10, 0), variantOf(category("Tops")));
+            LocalDateTime.of(2026, Month.JULY, 1, 10, 0), variantOf(category("Tops")));
         // Repository already returns most-recent-first per its derived query name.
         when(orderRepository.findByUserIdOrderByOrderDateDesc(42L)).thenReturn(List.of(recentOrder, olderOrder));
 
@@ -131,7 +136,7 @@ class ToolDataServiceTest {
     void getOrderHistory_mapsRecentOrdersAndCapsAtFive() {
         List<Order> sixOrders = new ArrayList<>();
         for (int i = 1; i <= 6; i++) {
-            sixOrders.add(order(i, new BigDecimal("10.00"), OrderStatus.PAID, LocalDateTime.of(2026, 1, i, 0, 0)));
+            sixOrders.add(order(i, new BigDecimal("10.00"), OrderStatus.PAID, LocalDateTime.of(2026, Month.JANUARY, i, 0, 0)));
         }
         when(orderRepository.findByUserIdOrderByOrderDateDesc(5L)).thenReturn(sixOrders);
 

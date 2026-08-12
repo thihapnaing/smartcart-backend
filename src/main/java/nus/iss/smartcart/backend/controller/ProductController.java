@@ -90,16 +90,9 @@ public class ProductController {
         return ResponseEntity.ok(response);
     }
 
-    //Author: Junior
-    @PostMapping(
-            value = "/search/image",
-            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
-    )
-    public ResponseEntity<List<ProductSearchResult>> searchByImage(
-            @RequestParam("image") MultipartFile image) {
-
-        return ResponseEntity.ok(
-                imageSearchService.searchByImage(image)        );
+    @PatchMapping("/{id}/activate")
+    public ResponseEntity<ProductDetailResponse> activateProduct(@PathVariable Long id) {
+        ProductDetailResponse response = productService.activateProduct(id);
+        return ResponseEntity.ok(response);
     }
-
 }

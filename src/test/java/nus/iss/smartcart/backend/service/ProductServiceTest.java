@@ -121,8 +121,6 @@ class ProductServiceTest {
         when(product1.getGender()).thenReturn(Gender.MEN);
         when(product1.getVariants()).thenReturn(List.of(productVariant));
 
-        // product2 is never stubbed — since limit(1) runs before map(), it should
-        // never be touched by toSearchResult, proving the limit cuts the stream early
         Product product2 = mock(Product.class);
 
         when(productRepository.search(null, null, null, false))

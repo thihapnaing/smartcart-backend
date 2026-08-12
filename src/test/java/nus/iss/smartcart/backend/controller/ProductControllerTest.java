@@ -244,4 +244,24 @@ class ProductControllerTest {
         mockMvc.perform(multipart("/api/products/image-upload").file(file))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void activateProduct_returnsOKWithProductData() throws Exception {
+        ProductDetailResponse response = ProductDetailResponse.builder()
+                .productId(1L)
+                .name("White Tee")
+                .description("soft and white")
+                .price(BigDecimal.ZERO)
+                .imageUrl("")
+                .gender("MEN")
+                .categoryName("Tops")
+                .shopName("SmartCart")
+                .status("ACTIVE")
+                .variants(List.of())
+                .build();
+        when(productService.activateProduct(1L)).thenReturn(response);
+        mockMvc.perform(patch("/api/products/1/activate"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACTIVE"));
+    }
 }

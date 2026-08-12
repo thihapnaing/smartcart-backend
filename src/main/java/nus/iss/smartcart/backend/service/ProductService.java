@@ -127,6 +127,15 @@ public class ProductService {
         return createProductDetailResponse(productRepository.save(product));
     }
 
+    @Transactional
+    public ProductDetailResponse activateProduct(Long productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
+        assertOwnership(product);
+        product.setStatus(ProductStatus.ACTIVE);
+        return createProductDetailResponse(productRepository.save(product));
+    }
+
     @Transactional(readOnly = true)
     public List<ProductSearchResult> getMerchantProducts() {
         User merchant = currentUserProvider.getCurrentMerchant();
@@ -135,6 +144,7 @@ public class ProductService {
                 .map(this::toSearchResult)
                 .toList();
     }
+
     private void applyScalarUpdates(Product product, ProductRequest request, Category category) {
         product.setCategory(category);
         product.setName(request.getName());

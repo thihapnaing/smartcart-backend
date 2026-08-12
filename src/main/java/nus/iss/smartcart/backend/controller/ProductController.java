@@ -85,4 +85,10 @@ public class ProductController {
         ImageUploadResponse response = ImageUploadResponse.builder().imageUrl(imageUrl).build();
         return ResponseEntity.ok(response);
     }
+
+    @PatchMapping("/{id}/activate")
+    public ResponseEntity<ProductDetailResponse> activateProduct(@PathVariable Long id) {
+        ProductDetailResponse response = productService.activateProduct(id);
+        return ResponseEntity.ok(response);
+    }
 }

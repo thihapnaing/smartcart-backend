@@ -419,4 +419,50 @@ class ProductServiceTest {
         assertEquals("White Tee", results.get(0).getName());
         assertEquals("ACTIVE", results.get(0).getStatus());
     }
+
+    @Test
+    void activateProduct_productNotFound_throwsEntityNotFoundException() {
+        when(productRepository.findById(1L)).thenReturn(Optional.empty());
+        assertThrows(EntityNotFoundException.class, () -> productService.activateProduct(1L));
+    }
+
+    @Test
+    void activateProduct_wrongMerchant_throwsForbiddenException() {
+        Product product = mock(Product.class);
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        User merchant2 = mock(User.class);
+        when(product.getMerchant()).thenReturn(merchant2);
+        when(merchant2.getId()).thenReturn(2L);
+
+        User merchant = mock(User.class);
+        when(currentUserProvider.getCurrentMerchant()).thenReturn(merchant);
+        when(merchant.getId()).thenReturn(1L);
+
+        assertThrows(ForbiddenException.class, () -> productService.activateProduct(1L));
+    }
+
+    @Test
+    void activateProduct_returnsOkWithProductData() {
+        User merchant = mock(User.class);
+        when(merchant.getId()).thenReturn(1L);
+
+        Category category = mock(Category.class);
+        when(category.getName()).thenReturn("Tops");
+
+        Product product = new Product();
+        product.setMerchant(merchant);
+        product.setName("White Tee");
+        product.setDescription("soft and made of cotton");
+        product.setPrice(BigDecimal.valueOf(1));
+        product.setCategory(category);
+        product.setGender(Gender.MEN);
+
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(currentUserProvider.getCurrentMerchant()).thenReturn(merchant);
+        when(productRepository.save(any(Product.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ProductDetailResponse response = productService.activateProduct(1L);
+
+        assertEquals(ProductStatus.ACTIVE.name(), response.getStatus());
+    }
 }

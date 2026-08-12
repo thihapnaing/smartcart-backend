@@ -1,9 +1,6 @@
 package nus.iss.smartcart.backend.controller;
 import jakarta.validation.Valid;
-import nus.iss.smartcart.backend.dto.ImageUploadResponse;
-import nus.iss.smartcart.backend.dto.ProductRequest;
-import nus.iss.smartcart.backend.dto.ProductDetailResponse;
-import nus.iss.smartcart.backend.dto.ProductSearchResult;
+import nus.iss.smartcart.backend.dto.*;
 import nus.iss.smartcart.backend.model.Gender;
 import nus.iss.smartcart.backend.service.ImageSearchService;
 import nus.iss.smartcart.backend.service.ImageUploadService;
@@ -94,5 +91,18 @@ public class ProductController {
     public ResponseEntity<ProductDetailResponse> activateProduct(@PathVariable Long id) {
         ProductDetailResponse response = productService.activateProduct(id);
         return ResponseEntity.ok(response);
+    }
+
+    //imageSearch :: Junior
+    @PostMapping(
+            value = "/search/image",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public ResponseEntity<ImageSearchResponse> searchByImage(
+            @RequestParam("image") MultipartFile image
+    ) {
+        return ResponseEntity.ok(
+                imageSearchService.searchByImage(image)
+        );
     }
 }

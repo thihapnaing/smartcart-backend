@@ -36,6 +36,7 @@ langgraph>=0.2.0
 langchain-core==1.5.3
 langchain-openai==1.4.1
 langchain-mcp-adapters>=0.3,<0.4
+langchain-community
 
 # Windows-only: mcp.server.stdio imports mcp.os.win32.utilities, which needs
 # pywintypes (part of pywin32) to talk to the stdio child process on Windows.

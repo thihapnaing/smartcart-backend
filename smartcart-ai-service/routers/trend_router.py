@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from langchain_openai import ChatOpenAI
@@ -11,9 +12,19 @@ from langchain_core.tools import tool
 from services.vector_store import ProductCatalog
 
 # Set your API Keys (In production, load these from .env)
-os.environ["TAVILY_API_KEY"] = "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"
+from dotenv import load_dotenv
+#os.environ["TAVILY_API_KEY"] 
+load_dotenv()
 
 trend_router = APIRouter()
+
+# Define the In-Memory Cache variables
+CACHE_DURATION_HOURS = 3
+lookbook_cache = {
+    "html": None,
+    "last_updated": None,
+    "theme": None
+}
 
 # Define the Request Data Model
 class TrendRequest(BaseModel):
@@ -70,6 +81,24 @@ agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
 
 @trend_router.post("/api/v1/trends/lookbook")
 async def generate_lookbook(request: TrendRequest):
+    global lookbook_cache
+    now = datetime.now()
+
+    # Check if we have a valid, unexpired cache for the requested theme
+    is_same_theme = lookbook_cache["theme"] == request.theme
+    is_cache_valid = lookbook_cache["last_updated"] and (now - lookbook_cache["last_updated"] < timedelta(hours=CACHE_DURATION_HOURS))
+
+    if is_same_theme and is_cache_valid:
+        print("\n[CACHE HIT] Returning cached Lookbook (Saved Tavily credits!)\n")
+        return {
+            "status": "success",
+            "theme_analyzed": request.theme,
+            "generated_article_html": lookbook_cache["html"],
+            "cached_response": True # Optional flag for debugging
+        }
+	
+	# If no cache or expired, run the LangChain Agent
+    print("\n[CACHE MISS] Generating new Lookbook via LLM & Tavily...\n")
     try:
         result = agent_executor.invoke({
             "theme": request.theme,
@@ -82,11 +111,17 @@ async def generate_lookbook(request: TrendRequest):
             clean_html = clean_html.split("```html")[1].split("```")[0].strip()
         elif "```" in clean_html:
             clean_html = clean_html.split("```")[1].split("```")[0].strip()
+            
+        # Save the newly generated content into the cache
+        lookbook_cache["html"] = clean_html
+        lookbook_cache["last_updated"] = now
+        lookbook_cache["theme"] = request.theme
 
         return {
             "status": "success",
             "theme_analyzed": request.theme,
-            "generated_article_html": clean_html
+            "generated_article_html": clean_html,
+            "cached_response": False
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

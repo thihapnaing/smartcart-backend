@@ -201,15 +201,15 @@ class ProductServiceTest {
 
         ProductRequest request =
                 ProductRequest.builder()
-                                .name("Classic Tee")
-                                .description("Soft cotton tee")
-                                .price(BigDecimal.valueOf(19.90))
-                                .gender(Gender.MEN)
-                                .categoryId(1L)
-                                .status(ProductStatus.ACTIVE)
-                                .variants(List.of(variantRequest))
-                                .imageUrl("https://res.cloudinary.com/demo/image/upload/sample.jpg")
-                                .build();
+                        .name("Classic Tee")
+                        .description("Soft cotton tee")
+                        .price(BigDecimal.valueOf(19.90))
+                        .gender(Gender.MEN)
+                        .categoryId(1L)
+                        .status(ProductStatus.ACTIVE)
+                        .variants(List.of(variantRequest))
+                        .imageUrl("https://res.cloudinary.com/demo/image/upload/sample.jpg")
+                        .build();
 
         when(productRepository.save(any(Product.class))).thenAnswer(invocation -> {
             Product p = invocation.getArgument(0);
@@ -237,8 +237,8 @@ class ProductServiceTest {
         when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
 
         ProductRequest request = ProductRequest.builder()
-                        .categoryId(99L)
-                        .build();
+                .categoryId(99L)
+                .build();
 
         assertThrows(IllegalArgumentException.class, () -> productService.createProduct(request));
     }

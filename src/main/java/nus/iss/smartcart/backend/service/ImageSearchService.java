@@ -1,5 +1,7 @@
 package nus.iss.smartcart.backend.service;
 
+//Author: Junior
+
 import nus.iss.smartcart.backend.dto.ImageSearchResponse;
 import nus.iss.smartcart.backend.dto.ProductSearchResult;
 import nus.iss.smartcart.backend.model.Gender;
@@ -10,12 +12,12 @@ import nus.iss.smartcart.backend.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
-import org.springframework.stereotype.Service;
 import org.springframework.http.client.MultipartBodyBuilder;
+import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
+
 import java.util.List;
 
 @Service
@@ -28,7 +30,7 @@ public class ImageSearchService {
     public ImageSearchService(
             ProductRepository productRepository,
             ProductService productService,
-            @Value("${ai.python-service.base-url}") String aiServiceUrl){
+            @Value("${ai.python-service.base-url}") String aiServiceUrl) {
 
         this.productRepository = productRepository;
         this.productService = productService;
@@ -38,7 +40,11 @@ public class ImageSearchService {
                 .build();
     }
 
-    public List<ProductSearchResult> searchByImage(
+    // =========================================================
+    // IMAGE SEARCH
+    // =========================================================
+
+    public ImageSearchResponse searchByImage(
             MultipartFile image) {
 
         if (image == null || image.isEmpty()) {
@@ -54,6 +60,7 @@ public class ImageSearchService {
 
                         @Override
                         public String getFilename() {
+
                             String filename =
                                     image.getOriginalFilename();
 
@@ -67,7 +74,13 @@ public class ImageSearchService {
                     new MultipartBodyBuilder();
 
             builder.part("image", imageResource)
-                    .contentType(MediaType.IMAGE_JPEG)
+                    .contentType(
+                            image.getContentType() != null
+                                    ? MediaType.parseMediaType(
+                                    image.getContentType()
+                            )
+                                    : MediaType.IMAGE_JPEG
+                    )
                     .filename(
                             image.getOriginalFilename() != null
                                     ? image.getOriginalFilename()
@@ -81,14 +94,18 @@ public class ImageSearchService {
             ImageSearchResponse aiResponse =
                     webClient.post()
                             .uri("/api/image-search")
-                            .contentType(MediaType.MULTIPART_FORM_DATA)
+                            .contentType(
+                                    MediaType.MULTIPART_FORM_DATA
+                            )
                             .body(
                                     BodyInserters.fromMultipartData(
                                             builder.build()
                                     )
                             )
                             .retrieve()
-                            .bodyToMono(ImageSearchResponse.class)
+                            .bodyToMono(
+                                    ImageSearchResponse.class
+                            )
                             .block();
 
             System.out.println(
@@ -102,20 +119,38 @@ public class ImageSearchService {
             }
 
             System.out.println(
-                    "Gender: " + aiResponse.getGender()
+                    "Prediction: "
+                            + aiResponse.getPrediction()
             );
 
             System.out.println(
-                    "Color: " + aiResponse.getColor()
+                    "Search Label: "
+                            + aiResponse.getSearchLabel()
             );
 
             System.out.println(
-                    "Category: " + aiResponse.getCategory()
+                    "Gender: "
+                            + aiResponse.getGender()
             );
 
-            return searchProductsFromPrediction(
-                    aiResponse
+            System.out.println(
+                    "Color: "
+                            + aiResponse.getColor()
             );
+
+            System.out.println(
+                    "Category: "
+                            + aiResponse.getCategory()
+            );
+
+            // Search MySQL using AI attributes.
+            List<ProductSearchResult> products =
+                    searchProductsFromPrediction(
+                            aiResponse
+                    );
+            aiResponse.setProducts(products);
+
+            return aiResponse;
 
         } catch (Exception e) {
 
@@ -124,11 +159,13 @@ public class ImageSearchService {
             );
 
             System.err.println(
-                    "Exception: " + e.getClass().getName()
+                    "Exception: "
+                            + e.getClass().getName()
             );
 
             System.err.println(
-                    "Message: " + e.getMessage()
+                    "Message: "
+                            + e.getMessage()
             );
 
             e.printStackTrace();
@@ -138,79 +175,98 @@ public class ImageSearchService {
             );
 
             throw new RuntimeException(
-                    "Image search failed: " + e.getMessage(),
+                    "Image search failed: "
+                            + e.getMessage(),
                     e
             );
         }
     }
 
-    private List<ProductSearchResult> searchProductsFromPrediction(
+
+    // =========================================================
+    // SEARCH MYSQL USING AI PREDICTION
+    // =========================================================
+
+    private List<ProductSearchResult>
+    searchProductsFromPrediction(
             ImageSearchResponse aiResponse) {
-        System.out.println("Gender: " + aiResponse.getGender());
-        System.out.println("Color: " + aiResponse.getColor());
-        System.out.println("Category: " + aiResponse.getCategory());
-        System.out.println("==================================");
 
-        try {
+        System.out.println(
+                "========== IMAGE SEARCH PARAMETERS =========="
+        );
 
-            Gender gender;
+        System.out.println(
+                "Gender: "
+                        + aiResponse.getGender()
+        );
 
-            if ("woman".equalsIgnoreCase(aiResponse.getGender())) {
-                gender = Gender.WOMEN;
-            } else if ("man".equalsIgnoreCase(aiResponse.getGender())) {
-                gender = Gender.MEN;
-            } else {
-                throw new IllegalArgumentException(
-                        "Unknown gender from AI: "
-                                + aiResponse.getGender()
+        System.out.println(
+                "Color: "
+                        + aiResponse.getColor()
+        );
+
+        System.out.println(
+                "Category: "
+                        + aiResponse.getCategory()
+        );
+
+        System.out.println(
+                "Status: "
+                        + ProductStatus.ACTIVE
+        );
+
+        System.out.println(
+                "============================================="
+        );
+
+        Gender gender;
+
+        String aiGender =
+                aiResponse.getGender();
+
+        if ("woman".equalsIgnoreCase(aiGender)
+                || "women".equalsIgnoreCase(aiGender)) {
+
+            gender = Gender.WOMEN;
+
+        } else if ("man".equalsIgnoreCase(aiGender)
+                || "men".equalsIgnoreCase(aiGender)) {
+
+            gender = Gender.MEN;
+
+        } else {
+
+            throw new IllegalArgumentException(
+                    "Unknown gender from AI: "
+                            + aiGender
+            );
+        }
+
+        List<Product> products =
+                productRepository.searchByImageAttributes(
+                        gender,
+                        aiResponse.getColor(),
+                        aiResponse.getCategory(),
+                        ProductStatus.ACTIVE
                 );
-            }
 
-            System.out.println("========== SEARCH PARAMETERS ==========");
-            System.out.println("Gender enum: " + gender);
-            System.out.println("Color: " + aiResponse.getColor());
-            System.out.println("Category: " + aiResponse.getCategory());
-            System.out.println("Status: " + ProductStatus.ACTIVE);
-            System.out.println("=======================================");
+        System.out.println(
+                "Products found: "
+                        + products.size()
+        );
 
-            List<Product> products =
-                    productRepository.searchByImageAttributes(
-                            gender,
-                            aiResponse.getColor(),
-                            aiResponse.getCategory(),
-                            ProductStatus.ACTIVE
+        return products.stream()
+                .map(product -> {
+
+                    System.out.println(
+                            "Converting product ID: "
+                                    + product.getId()
                     );
 
-            System.out.println(
-                    "Products found: " + products.size()
-            );
+                    return productService
+                            .toSearchResult(product);
 
-            return products.stream()
-                    .map(product -> {
-
-                        System.out.println(
-                                "Converting product ID: "
-                                        + product.getId()
-                        );
-
-                        return productService.toSearchResult(product);
-
-                    })
-                    .toList();
-
-        } catch (Exception e) {
-
-            System.err.println(
-                    "========== IMAGE SEARCH DB ERROR =========="
-            );
-
-            e.printStackTrace();
-
-            System.err.println(
-                    "==========================================="
-            );
-
-            throw e;
-        }
+                })
+                .toList();
     }
 }

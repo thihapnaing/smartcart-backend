@@ -159,10 +159,10 @@ class ProductControllerTest {
         when(productService.updateProduct(eq(1L), any())).thenReturn(fakeResponse);
 
         mockMvc.perform(put("/api/products/1")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-        ).andExpect(status().isOk())
-         .andExpect(jsonPath("$.name").value("White Tee"));
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                ).andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("White Tee"));
     }
 
     @Test
@@ -230,8 +230,8 @@ class ProductControllerTest {
 
         when(imageUploadService.uploadImage(any())).thenReturn("https://res.cloudinary.com/demo/sample.jpg");
         mockMvc.perform(multipart("/api/products/image-upload")
-                .file(file)
-        )
+                        .file(file)
+                )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.imageUrl").value("https://res.cloudinary.com/demo/sample.jpg"));
     }

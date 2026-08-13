@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import nus.iss.smartcart.backend.chat.dto.ChatResponse;
+import nus.iss.smartcart.backend.chat.dto.OrderSummaryDto;
 import nus.iss.smartcart.backend.chat.dto.ProductSummaryDto;
 import nus.iss.smartcart.backend.config.PythonAiConfig;
 import nus.iss.smartcart.backend.chat.model.ChatMessage;
@@ -142,6 +143,13 @@ public class PythonAiChatService implements ChatService {
                     objectMapper.convertValue(productsNode, List.class);
                 response.setProducts(toProductDtos(productsRaw));
             }
+
+            JsonNode ordersNode = aiResponse.get("orders");
+            if (ordersNode != null && ordersNode.isArray() && !ordersNode.isEmpty()) {
+                List<Map<String, Object>> ordersRaw =
+                    objectMapper.convertValue(ordersNode, List.class);
+                response.setOrders(toOrderDtos(ordersRaw));
+            }
         } catch (InterruptedException e) {
             // Restore the interrupt flag instead of swallowing it, per Sonar S2142 - the thread
             // was told to stop, so callers up the stack need to see that signal too.
@@ -223,6 +231,21 @@ public class PythonAiChatService implements ChatService {
             dto.setCategory(p.get("category") != null ? String.valueOf(p.get("category")) : null);
             Object defaultVariantId = p.get("defaultVariantId");
             dto.setDefaultVariantId(defaultVariantId != null ? Long.valueOf(defaultVariantId.toString()) : null);
+            result.add(dto);
+        }
+        return result;
+    }
+
+    private List<OrderSummaryDto> toOrderDtos(List<Map<String, Object>> raw) {
+        List<OrderSummaryDto> result = new ArrayList<>();
+        for (Map<String, Object> o : raw) {
+            OrderSummaryDto dto = new OrderSummaryDto();
+            Object orderId = o.get("orderId");
+            dto.setOrderId(orderId != null ? Long.valueOf(orderId.toString()) : null);
+            Object totalAmount = o.get("totalAmount");
+            dto.setTotalAmount(totalAmount != null ? new BigDecimal(totalAmount.toString()) : null);
+            dto.setStatus(o.get("status") != null ? String.valueOf(o.get("status")) : null);
+            dto.setOrderDate(o.get("orderDate") != null ? String.valueOf(o.get("orderDate")) : null);
             result.add(dto);
         }
         return result;

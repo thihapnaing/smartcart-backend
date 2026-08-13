@@ -48,6 +48,15 @@ public class Order {
         this.orderDate = LocalDateTime.now();
     }
 
+    @Column(name = "tracking_no", unique = true)
+    private String trackingNo;
+
+    @Column(name = "delivery_person_id")
+    private Long deliveryPersonId;
+
+    @Column(name = "delivery_proof_key")
+    private String deliveryProofKey;
+
     //Getters and Setters
     public Long getId() {
         return id;
@@ -132,4 +141,17 @@ public class Order {
     public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
     }
+
+    // for delivery app
+    public String getTrackingNo() {return trackingNo;}
+
+    public void setTrackingNo(String trackingNo) {this.trackingNo = trackingNo;}
+
+    public Long getDeliveryPersonId() {return deliveryPersonId;}
+
+    public void setDeliveryPersonId(Long deliveryPersonId) {this.deliveryPersonId = deliveryPersonId;}
+
+    public String getDeliveryProofKey() {return deliveryProofKey;}
+
+    public void setDeliveryProofKey(String deliveryProofKey) {this.deliveryProofKey = deliveryProofKey;}
 }

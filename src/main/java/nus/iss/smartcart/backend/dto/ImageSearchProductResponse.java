@@ -5,6 +5,8 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 
+//Author: Junior
+
 @Getter
 @Setter
 public class ImageSearchProductResponse {

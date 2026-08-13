@@ -19,6 +19,9 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import nus.iss.smartcart.backend.security.JwtService;
+import nus.iss.smartcart.backend.security.CustomUserDetailsService;
+import nus.iss.smartcart.backend.repository.UserRepository;
 
 /** Controller-slice test for the dashboard stats endpoint - just routing/serialization, the
  * actual number-crunching is covered by AdminDashboardServiceTest. */
@@ -26,6 +29,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AdminDashboardControllerTest {
 
     @Autowired private MockMvc mockMvc;
+
+    @MockitoBean
+    private JwtService jwtService;
+
+    @MockitoBean
+    private CustomUserDetailsService customUserDetailsService;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     @MockitoBean private AdminDashboardService adminDashboardService;
 

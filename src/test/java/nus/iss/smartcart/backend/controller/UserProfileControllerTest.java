@@ -15,12 +15,24 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import nus.iss.smartcart.backend.security.JwtService;
+import nus.iss.smartcart.backend.security.CustomUserDetailsService;
+import nus.iss.smartcart.backend.repository.UserRepository;
 
 @WebMvcTest(UserProfileController.class)
 class UserProfileControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private JwtService jwtService;
+
+    @MockitoBean
+    private CustomUserDetailsService customUserDetailsService;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     @MockitoBean private UserProfileService userProfileService;
     @MockitoBean private CurrentUserProvider currentUserProvider;

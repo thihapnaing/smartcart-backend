@@ -28,12 +28,24 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import nus.iss.smartcart.backend.security.JwtService;
+import nus.iss.smartcart.backend.security.CustomUserDetailsService;
+import nus.iss.smartcart.backend.repository.UserRepository;
 
 @WebMvcTest(ProductController.class)
 class ProductControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private JwtService jwtService;
+
+    @MockitoBean
+    private CustomUserDetailsService customUserDetailsService;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     @MockitoBean private ProductService productService;
     @MockitoBean private ImageUploadService imageUploadService;

@@ -20,12 +20,24 @@ import java.util.List;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import nus.iss.smartcart.backend.security.JwtService;
+import nus.iss.smartcart.backend.security.CustomUserDetailsService;
+import nus.iss.smartcart.backend.repository.UserRepository;
 
 @WebMvcTest(controllers = RecommendationController.class)
 class RecommendationControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private JwtService jwtService;
+
+    @MockitoBean
+    private CustomUserDetailsService customUserDetailsService;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     // 3. Swapped the removed @MockBean for @MockitoBean
     @MockitoBean

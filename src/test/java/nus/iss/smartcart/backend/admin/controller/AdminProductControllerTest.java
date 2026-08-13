@@ -20,6 +20,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import nus.iss.smartcart.backend.security.JwtService;
+import nus.iss.smartcart.backend.security.CustomUserDetailsService;
+import nus.iss.smartcart.backend.repository.UserRepository;
 
 /**
  * Controller-slice tests for the moderation endpoints - request routing, status codes, and
@@ -30,6 +33,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AdminProductControllerTest {
 
     @Autowired private MockMvc mockMvc;
+
+    @MockitoBean
+    private JwtService jwtService;
+
+    @MockitoBean
+    private CustomUserDetailsService customUserDetailsService;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     @MockitoBean private AdminProductService adminProductService;
 

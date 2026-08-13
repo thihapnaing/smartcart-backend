@@ -8,6 +8,8 @@ import lombok.Setter;
 
 import java.util.List;
 
+//Author: Junior
+
 @Getter
 @Setter
 public class ImageSearchResponse {

@@ -9,6 +9,7 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_USER: smartcart_user
       MYSQL_PASSWORD: smartcart_password
+      TZ: 'Asia/Singapore'
     ports:
       - "3306:3306"
     volumes:

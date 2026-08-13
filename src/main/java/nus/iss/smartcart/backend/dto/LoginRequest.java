@@ -7,9 +7,11 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class ImageSearchRequest {
+public class LoginRequest {
 
-    private String gender;
-    private String color;
-    private String category;
+    private String email;
+    private String password;
+
+    public LoginRequest() {
+    }
 }

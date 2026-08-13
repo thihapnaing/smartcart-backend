@@ -174,7 +174,7 @@ class CNNService:
             )
 
             # Calculate final score BEFORE using it
-            final_score = cnn_score * 0.8 + color_bonus * 0.2
+            final_score = cnn_score * 0.65 + color_bonus * 0.35
 
             results.append({
 
@@ -211,13 +211,14 @@ class CNNService:
 
         prediction = (
             f"{results[0]['gender']} "
-            f"{results[0]['color']} "
+            f"{query_color} "
             f"{results[0]['category']}"
         )
 
-        # Short, human-friendly label for the search bar, e.g. "Red Shirt".
-        # Gender is left out on purpose - it's used to filter/rank, not shown.
-        search_label = f"{results[0]['color']} {results[0]['category']}".title()
+        search_label = (
+            f"{query_color} "
+            f"{results[0]['category']}"
+        ).title()
 
         return {
 

@@ -1,183 +1,165 @@
 import cv2
 import numpy as np
 
-#
-#   Author: Junior
-#
 
 def detect_color(image):
 
-    # ==============================
-    # Crop shirt region
-    # ==============================
-
     h, w = image.shape[:2]
 
-    shirt = image[
-        int(h * 0.18):int(h * 0.55),
-        int(w * 0.25):int(w * 0.75)
-    ]
+    # =====================================================
+    # 1. Focus on the central object area.
+    #
+    # Product images usually place the clothing/shoe
+    # near the center. This reduces the influence of
+    # large backgrounds around the object.
+    # =====================================================
 
-    # ==============================
-    # Convert to HSV
-    # ==============================
+    y1 = int(h * 0.18)
+    y2 = int(h * 0.82)
 
-    hsv = cv2.cvtColor(
-        shirt,
-        cv2.COLOR_BGR2HSV
+    x1 = int(w * 0.18)
+    x2 = int(w * 0.82)
+
+    region = image[y1:y2, x1:x2]
+
+    hsv = cv2.cvtColor(region, cv2.COLOR_BGR2HSV)
+
+    H = hsv[:, :, 0]
+    S = hsv[:, :, 1]
+    V = hsv[:, :, 2]
+
+    total_pixels = H.size
+
+    # =====================================================
+    # 2. Calculate candidate pixel masks.
+    #
+    # We specifically handle black/gray/white BEFORE
+    # colorful pixels.
+    #
+    # This is important for black products on colorful
+    # backgrounds.
+    # =====================================================
+
+    black_mask = (
+        (V < 75)
     )
 
-    # ==============================
-    # Remove background
-    # ==============================
-
-    mask = (
-
-        (hsv[:, :, 1] > 40) &
-        (hsv[:, :, 2] > 40)
-
+    gray_mask = (
+        (S < 40) &
+        (V >= 75) &
+        (V < 190)
     )
 
-    pixels = hsv[mask]
-
-    if len(pixels) == 0:
-        return "unknown"
-
-    pixels = np.float32(pixels)
-
-    # ==============================
-    # KMeans
-    # ==============================
-
-    criteria = (
-        cv2.TERM_CRITERIA_EPS +
-        cv2.TERM_CRITERIA_MAX_ITER,
-        20,
-        0.2
+    white_mask = (
+        (S < 40) &
+        (V >= 190)
     )
 
-    K = 3
+    # =====================================================
+    # 3. Calculate the amount of dark pixels.
+    # =====================================================
 
-    _, labels, centers = cv2.kmeans(
+    black_ratio = np.sum(black_mask) / total_pixels
 
-        pixels,
+    gray_ratio = np.sum(gray_mask) / total_pixels
 
-        K,
-
-        None,
-
-        criteria,
-
-        10,
-
-        cv2.KMEANS_RANDOM_CENTERS
-
-    )
-
-    # ==============================
-    # Largest Cluster
-    # ==============================
-
-    counts = np.bincount(labels.flatten())
-
-    dominant = centers[np.argmax(counts)]
-
-    hue = dominant[0]
-
-    sat = dominant[1]
-
-    val = dominant[2]
+    white_ratio = np.sum(white_mask) / total_pixels
 
     print()
+    print("========== COLOR DETECTION ==========")
+    print("Black ratio:", round(black_ratio, 4))
+    print("Gray ratio :", round(gray_ratio, 4))
+    print("White ratio:", round(white_ratio, 4))
+    print("=====================================")
 
-    print("Dominant HSV")
+    # =====================================================
+    # 4. Black detection
+    #
+    # If a significant amount of dark pixels exists in
+    # the central region, prefer BLACK over colorful
+    # background pixels.
+    # =====================================================
 
-    print(hue, sat, val)
-
-    # ==============================
-    # Very dark
-    # ==============================
-
-    if val < 55:
+    if black_ratio >= 0.08:
+        print("Detected color: black")
         return "black"
 
-    # ==============================
-    # White / Gray
-    # ==============================
+    # =====================================================
+    # 5. Gray detection
+    # =====================================================
 
-    if sat < 30:
+    if gray_ratio >= 0.10:
+        print("Detected color: gray")
+        return "gray"
 
-        if val > 190:
-            return "white"
+    # =====================================================
+    # 6. White detection
+    # =====================================================
 
-        elif val > 90:
-            return "gray"
+    if white_ratio >= 0.15:
+        print("Detected color: white")
+        return "white"
 
-        else:
-            return "black"
+    # =====================================================
+    # 7. For colorful objects, use HSV pixels.
+    #
+    # Ignore very dark pixels and very bright pixels.
+    # =====================================================
 
-    # ==============================
-    # Hue Mapping
-    # ==============================
-    # ==============================
-    # Brown
-    # ==============================
+    colorful_mask = (
+        (S > 45) &
+        (V > 50) &
+        (V < 245)
+    )
 
-    if (
-            8 <= hue <= 22
-            and sat > 60
-            and val < 150
-    ):
-        return "brown"
+    if not np.any(colorful_mask):
 
-    # ==============================
-    # Red
-    # ==============================
+        print("Detected color: unknown")
+        return "unknown"
 
-    if hue < 8 or hue >= 170:
-        return "red"
+    hue_values = H[colorful_mask]
 
-    # ==============================
-    # Orange
-    # ==============================
+    # =====================================================
+    # 8. Hue histogram
+    # =====================================================
 
-    if (
-            8 <= hue <= 22
-            and val >= 150
-    ):
-        return "orange"
+    histogram = np.histogram(
+        hue_values,
+        bins=180,
+        range=(0, 180)
+    )[0]
 
-    # ==============================
-    # Yellow
-    # ==============================
+    dominant_hue = int(
+        np.argmax(histogram)
+    )
 
-    if 22 <= hue < 35:
-        return "yellow"
+    print("Dominant hue:", dominant_hue)
 
-    # ==============================
-    # Green
-    # ==============================
+    # =====================================================
+    # 9. Convert hue to color.
+    # =====================================================
 
-    if 35 <= hue < 85:
-        return "green"
+    if dominant_hue < 8 or dominant_hue >= 170:
+        color = "red"
 
-    # ==============================
-    # Blue
-    # ==============================
+    elif dominant_hue < 22:
+        color = "orange"
 
-    if 85 <= hue < 130:
-        return "blue"
+    elif dominant_hue < 35:
+        color = "yellow"
 
-    # ==============================
-    # Purple
-    # ==============================
+    elif dominant_hue < 85:
+        color = "green"
 
-    if 130 <= hue < 160:
-        return "purple"
+    elif dominant_hue < 130:
+        color = "blue"
 
-    # ==============================
-    # Pink
-    # ==============================
+    elif dominant_hue < 160:
+        color = "purple"
 
-    return "pink"
+    else:
+        color = "pink"
 
+    print("Detected color:", color)
+
+    return color

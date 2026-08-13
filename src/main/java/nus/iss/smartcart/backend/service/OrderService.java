@@ -5,10 +5,13 @@ import nus.iss.smartcart.backend.model.*;
 import nus.iss.smartcart.backend.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import nus.iss.smartcart.backend.security.CurrentUserProvider;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -208,4 +211,153 @@ public class OrderService {
             }
         }
     }
+
+    // for delivery app
+    public List<Order> getAssignedOrders(Long deliveryPersonId) {
+        return orderRepository.findByDeliveryPersonId(deliveryPersonId);
+    }
+
+    public List<Order> getInProgressOrders(
+            Long deliveryPersonId
+    ) {
+        return orderRepository
+                .findByDeliveryPersonIdAndStatusInOrderByIdDesc(
+                        deliveryPersonId,
+                        List.of(
+                                OrderStatus.PACKED,
+                                OrderStatus.PICKED_UP
+                        )
+                );
+    }
+
+    public List<Order> getCompletedOrders(
+            Long deliveryPersonId
+    ) {
+        return orderRepository
+                .findByDeliveryPersonIdAndStatusOrderByDeliveredAtDesc(
+                        deliveryPersonId,
+                        OrderStatus.DELIVERED
+                );
+    }
+
+    @Transactional
+    public Order pickupParcel(
+            String trackingNo,
+            Long deliveryPersonId
+    ) {
+        Order order = orderRepository
+                .findByTrackingNoAndDeliveryPersonId(
+                        trackingNo,
+                        deliveryPersonId
+                )
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Order not found or not assigned " +
+                                        "to this delivery person"
+                        )
+                );
+
+        if (order.getStatus() != OrderStatus.PACKED) {
+            throw new IllegalStateException(
+                    "Only PACKED orders can be picked up"
+            );
+        }
+
+        order.setStatus(OrderStatus.PICKED_UP);
+
+        return orderRepository.save(order);
+    }
+
+    @Transactional
+    public Order deliveredParcel(
+            String trackingNo,
+            Long deliveryPersonId
+    ) {
+        Order order = orderRepository
+                .findByTrackingNoAndDeliveryPersonId(
+                        trackingNo,
+                        deliveryPersonId
+                )
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Order not found or not assigned " +
+                                        "to this delivery person"
+                        )
+                );
+
+        if (order.getStatus() != OrderStatus.PICKED_UP) {
+            throw new IllegalStateException(
+                    "Only PACKED orders can be picked up"
+            );
+        }
+
+        order.setStatus(OrderStatus.DELIVERED);
+
+        return orderRepository.save(order);
+    }
+
+    public Order searchAssignedOrderByTrackingNo(
+            String trackingNo,
+            Long deliveryPersonId
+    ) {
+        return orderRepository
+                .findByTrackingNoAndDeliveryPersonId(
+                        trackingNo,
+                        deliveryPersonId
+                )
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Order not found or not assigned?: " + trackingNo
+                        )
+                );
+    }
+
+    @Transactional
+    public Order confirmDeliveryProof(
+            String trackingNo,
+            String fileKey
+    ) {
+        Order order = orderRepository
+                .findByTrackingNo(trackingNo)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Order not found"
+                        )
+                );
+
+        order.setDeliveryProofKey(fileKey);
+        order.setStatus(OrderStatus.DELIVERED);
+        order.setDeliveredAt(LocalDateTime.now());
+
+        return orderRepository.save(order);
+    }
+
+    @Transactional
+    public Order assignOrder(
+            String trackingNo,
+            Long deliveryPersonId
+    ) {
+        Order order = orderRepository
+                .findByTrackingNo(trackingNo)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Order not found"
+                        )
+                );
+
+        order.setDeliveryPersonId(deliveryPersonId);
+
+        Order savedOrder =
+                orderRepository.save(order);
+
+//        pushNotificationService.notifyJobAssigned(
+//                savedOrder
+//        );
+
+        return savedOrder;
+    }
+
 }

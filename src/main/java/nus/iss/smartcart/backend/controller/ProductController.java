@@ -1,13 +1,15 @@
 package nus.iss.smartcart.backend.controller;
 import jakarta.validation.Valid;
-import nus.iss.smartcart.backend.dto.ProductRequest;
-import nus.iss.smartcart.backend.dto.ProductDetailResponse;
-import nus.iss.smartcart.backend.dto.ProductSearchResult;
+import nus.iss.smartcart.backend.dto.*;
 import nus.iss.smartcart.backend.model.Gender;
+import nus.iss.smartcart.backend.service.ImageSearchService;
+import nus.iss.smartcart.backend.service.ImageUploadService;
 import nus.iss.smartcart.backend.service.ProductService;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -17,9 +19,13 @@ import java.util.List;
 public class ProductController {
 
     private final ProductService productService;
+    private final ImageSearchService imageSearchService; //added by Junior
+    private final ImageUploadService imageUploadService;
 
-    public ProductController(ProductService productService) {
+    public ProductController(ProductService productService, ImageSearchService imageSearchService, ImageUploadService imageUploadService) {
         this.productService = productService;
+        this.imageSearchService = imageSearchService;
+        this.imageUploadService = imageUploadService;
     }
 
     @GetMapping("/search")
@@ -72,5 +78,31 @@ public class ProductController {
     public ResponseEntity<List<ProductSearchResult>> getMerchantProducts() {
         List<ProductSearchResult> response = productService.getMerchantProducts();
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/image-upload")
+    public ResponseEntity<ImageUploadResponse> uploadImage(@RequestParam("file")MultipartFile file) {
+        String imageUrl = imageUploadService.uploadImage(file);
+        ImageUploadResponse response = ImageUploadResponse.builder().imageUrl(imageUrl).build();
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}/activate")
+    public ResponseEntity<ProductDetailResponse> activateProduct(@PathVariable Long id) {
+        ProductDetailResponse response = productService.activateProduct(id);
+        return ResponseEntity.ok(response);
+    }
+
+    //imageSearch :: Junior
+    @PostMapping(
+            value = "/search/image",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public ResponseEntity<ImageSearchResponse> searchByImage(
+            @RequestParam("image") MultipartFile image
+    ) {
+        return ResponseEntity.ok(
+                imageSearchService.searchByImage(image)
+        );
     }
 }

@@ -1,12 +1,10 @@
 package nus.iss.smartcart.backend.service;
 
-import nus.iss.smartcart.backend.dto.CartItemDetail;
-import nus.iss.smartcart.backend.dto.CheckoutRequest;
-import nus.iss.smartcart.backend.dto.CheckoutResponse;
-import nus.iss.smartcart.backend.dto.DeliveryDetails;
+import nus.iss.smartcart.backend.dto.*;
 import nus.iss.smartcart.backend.model.*;
 import nus.iss.smartcart.backend.repository.*;
 import jakarta.persistence.EntityNotFoundException;
+import nus.iss.smartcart.backend.security.CurrentUserProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,8 +21,9 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final PaymentRepository paymentRepository;
+    private final CurrentUserProvider currentUserProvider;
 
-    public OrderService(CartRepository cartRepository, CartItemRepository cartItemRepository, ProductVariantRepository productVariantRepository, UserRepository userRepository, OrderRepository orderRepository, OrderItemRepository orderItemRepository, PaymentRepository paymentRepository) {
+    public OrderService(CartRepository cartRepository, CartItemRepository cartItemRepository, ProductVariantRepository productVariantRepository, UserRepository userRepository, OrderRepository orderRepository, OrderItemRepository orderItemRepository, PaymentRepository paymentRepository, CurrentUserProvider currentUserProvider) {
         this.cartRepository = cartRepository;
         this.cartItemRepository = cartItemRepository;
         this.productVariantRepository = productVariantRepository;
@@ -32,6 +31,7 @@ public class OrderService {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.paymentRepository = paymentRepository;
+        this.currentUserProvider = currentUserProvider;
     }
 
     @Transactional
@@ -82,6 +82,15 @@ public class OrderService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
+    public List<MerchantOrderItemResponse> getMerchantOrderItems() {
+        User merchant = currentUserProvider.getCurrentMerchant();
+        List<OrderItem> orderItemList = orderItemRepository.findByProductVariantProductMerchantId(merchant.getId());
+        return orderItemList.stream()
+                .map(this::toMerchantOrderItemResponse)
+                .toList();
+    }
+
     private CheckoutResponse buildCheckOutResponse(Order order, CheckoutRequest checkoutRequest) {
         List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
         List<CartItemDetail> cartItemDetails = orderItems
@@ -117,6 +126,20 @@ public class OrderService {
                 .subtotal(orderItem.getUnitPrice().multiply(BigDecimal.valueOf(orderItem.getQuantity())))
                 .gender(orderItem.getProductVariant().getProduct().getGender().name())
                 .categoryName(orderItem.getProductVariant().getProduct().getCategory().getName())
+                .build();
+    }
+
+    private MerchantOrderItemResponse toMerchantOrderItemResponse(OrderItem orderItem) {
+        return MerchantOrderItemResponse.builder()
+                .orderId(orderItem.getOrder().getId())
+                .productName(orderItem.getProductVariant().getProduct().getName())
+                .size(orderItem.getProductVariant().getSize())
+                .quantity(orderItem.getQuantity())
+                .unitPrice(orderItem.getUnitPrice())
+                .subtotal(orderItem.getUnitPrice().multiply(BigDecimal.valueOf(orderItem.getQuantity())))
+                .orderStatus(orderItem.getOrder().getStatus().name())
+                .buyerFirstName(orderItem.getOrder().getFirstName())
+                .buyerLastName(orderItem.getOrder().getLastName())
                 .build();
     }
 

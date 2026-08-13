@@ -63,4 +63,16 @@ class ToolDataControllerTest {
         assertSame(expected, actual);
         verify(toolDataService).searchProducts(null, null, null, 4, false);
     }
+
+    @Test
+    void cart_passesUserIdThroughAndReturnsServiceResult() {
+        ToolDataController controller = new ToolDataController(toolDataService);
+        Map<String, Object> expected = Map.of("itemCount", 2);
+        when(toolDataService.getCart(42L)).thenReturn(expected);
+
+        Map<String, Object> actual = controller.cart(42L);
+
+        assertSame(expected, actual);
+        verify(toolDataService).getCart(42L);
+    }
 }

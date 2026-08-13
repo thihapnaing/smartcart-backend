@@ -51,6 +51,15 @@ def search_products(category: Optional[str] = None, max_price: Optional[float] =
       "latest", etc. - sorts by most recently added instead of default order."""
     return st.search_products(category, max_price, query, limit, newest_first)
 
+@mcp.tool()
+def get_cart(user_id: int) -> str:
+    """Look up what's currently in a SmartCart user's shopping cart. Returns each
+    item (product name, size, quantity, unit price, subtotal) plus the cart total
+    and item count. Use this to answer "what's in my cart" / "how much is my cart".
+
+    user_id: the numeric SmartCart user ID."""
+    return st.get_cart(user_id)
+
 
 if __name__ == "__main__":
     mcp.run(transport="stdio")

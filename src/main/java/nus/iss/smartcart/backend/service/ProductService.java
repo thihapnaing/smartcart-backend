@@ -47,7 +47,7 @@ public class ProductService {
      */
     @Transactional(readOnly = true)
     public List<ProductSearchResult> search(String keyword, String categoryName, Gender gender, boolean newestFirst, int limit) {
-        List<Product> products = productRepository.search(keyword, categoryName, gender, newestFirst);
+        List<Product> products = productRepository.search(keyword, categoryName, gender, newestFirst, ProductStatus.ACTIVE);
         return products.stream()
                 .limit(Math.max(1, limit))
                 .map(this::toSearchResult)
@@ -82,6 +82,7 @@ public class ProductService {
         product.setCategory(category);
         product.setMerchant(merchant);
         product.setShopName(shopName);
+        product.setImageUrl(request.getImageUrl());
         product.setStatus(request.getStatus());
 
         List<ProductVariant> variants = request.getVariants().stream()
@@ -126,6 +127,15 @@ public class ProductService {
         return createProductDetailResponse(productRepository.save(product));
     }
 
+    @Transactional
+    public ProductDetailResponse activateProduct(Long productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
+        assertOwnership(product);
+        product.setStatus(ProductStatus.ACTIVE);
+        return createProductDetailResponse(productRepository.save(product));
+    }
+
     @Transactional(readOnly = true)
     public List<ProductSearchResult> getMerchantProducts() {
         User merchant = currentUserProvider.getCurrentMerchant();
@@ -134,12 +144,14 @@ public class ProductService {
                 .map(this::toSearchResult)
                 .toList();
     }
+
     private void applyScalarUpdates(Product product, ProductRequest request, Category category) {
         product.setCategory(category);
         product.setName(request.getName());
         product.setDescription(request.getDescription());
         product.setPrice(request.getPrice());
         product.setGender(request.getGender());
+        product.setImageUrl(request.getImageUrl());
         product.setStatus(request.getStatus());
     }
 
@@ -198,19 +210,41 @@ public class ProductService {
                 .build();
     }
 
-    private ProductSearchResult toSearchResult(Product product) {
-        Long defaultVariantId = product.getVariants().isEmpty() ? null : product.getVariants().get(0).getId(); // Author: Htet Nandar (Grace)
+    public ProductSearchResult toSearchResult(Product product) {
+        Long defaultVariantId = product.getVariants().isEmpty() ? null : product.getVariants().get(0).getId();
+        List<ProductVariantSearchResult> variants =
+                product.getVariants()
+                        .stream()
+                        .map(variant ->
+                                ProductVariantSearchResult.builder()
+                                        .id(variant.getId())
+                                        .size(variant.getSize())
+                                        .stock(variant.getStock())
+                                        .build()
+                        )
+                        .toList();
+
         return ProductSearchResult.builder()
-                    .id(product.getId())
-                    .name(product.getName())
-                    .description(product.getDescription())
-                    .price(product.getPrice())
-                    .imageUrl(product.getImageUrl())
-                    .shopName(product.getShopName())
-                    .categoryName(product.getCategory().getName())
-                    .gender(product.getGender().name())
-                    .defaultVariantId(defaultVariantId)
-                    .status(product.getStatus().name())
-                    .build();
+                .id(product.getId())
+                .name(product.getName())
+                .description(product.getDescription())
+                .price(product.getPrice())
+                .imageUrl(product.getImageUrl())
+                .shopName(product.getShopName())
+                .categoryName(
+                        product.getCategory() != null
+                                ? product.getCategory().getName()
+                                : null
+                )
+                .gender(
+                        product.getGender() != null
+                                ? product.getGender().name()
+                                : null
+                )
+                .color(product.getColor())
+                .status(product.getStatus() != null ? product.getStatus().name() : null)
+                .defaultVariantId(defaultVariantId)
+                .variants(variants)
+                .build();
     }
 }

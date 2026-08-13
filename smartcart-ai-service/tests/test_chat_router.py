@@ -24,7 +24,9 @@ def test_send_message_returns_503_when_agent_service_not_ready():
 
 def test_send_message_returns_reply_and_products_from_agent_service():
     fake_agent = AsyncMock()
-    fake_agent.chat.return_value = ("Here you go!", [{"productId": 1, "name": "Tee"}])
+    fake_agent.chat.return_value = (
+        "Here you go!", [{"productId": 1, "name": "Tee"}], [{"orderId": 9, "status": "PACKED"}]
+    )
     chat_router.agent_service = fake_agent
     client = _make_client()
 
@@ -38,12 +40,14 @@ def test_send_message_returns_reply_and_products_from_agent_service():
     assert body["session_id"] == "session-1"
     assert body["products"][0]["productId"] == 1
     assert body["products"][0]["name"] == "Tee"
+    assert body["orders"][0]["orderId"] == 9
+    assert body["orders"][0]["status"] == "PACKED"
     fake_agent.chat.assert_awaited_once_with(message="show me tees", history=[], user_id=None)
 
 
 def test_send_message_forwards_conversation_history_to_agent_service():
     fake_agent = AsyncMock()
-    fake_agent.chat.return_value = ("Sure!", None)
+    fake_agent.chat.return_value = ("Sure!", None, None)
     chat_router.agent_service = fake_agent
     client = _make_client()
 

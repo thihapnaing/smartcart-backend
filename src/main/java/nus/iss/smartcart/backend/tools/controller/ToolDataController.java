@@ -38,4 +38,9 @@ public class ToolDataController {
     ) {
         return toolDataService.searchProducts(category, maxPrice, query, limit, newestFirst);
     }
+
+    @GetMapping("/cart")
+    public Map<String, Object> cart(@RequestParam Long userId) {
+        return toolDataService.getCart(userId);
+    }
 }

@@ -50,3 +50,16 @@ def search_products(category: Optional[str] = None, max_price: Optional[float] =
         return json.dumps(resp.json())
     except Exception as e:
         return json.dumps({"error": str(e)})
+
+
+def get_cart(user_id: int) -> str:
+    try:
+        resp = requests.get(
+            f"{BACKEND_URL}/internal/tools/cart",
+            params={"userId": user_id},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return json.dumps(resp.json())
+    except Exception as e:
+        return json.dumps({"error": str(e)})

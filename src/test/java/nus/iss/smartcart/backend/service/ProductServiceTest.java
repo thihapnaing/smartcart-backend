@@ -121,11 +121,9 @@ class ProductServiceTest {
         when(product1.getGender()).thenReturn(Gender.MEN);
         when(product1.getVariants()).thenReturn(List.of(productVariant));
 
-        // product2 is never stubbed — since limit(1) runs before map(), it should
-        // never be touched by toSearchResult, proving the limit cuts the stream early
         Product product2 = mock(Product.class);
 
-        when(productRepository.search(null, null, null, false))
+        when(productRepository.search(null, null, null, false, ProductStatus.ACTIVE))
                 .thenReturn(List.of(product1, product2));
 
         List<ProductSearchResult> results = productService.search(null, null, null, false, 0);
@@ -203,14 +201,15 @@ class ProductServiceTest {
 
         ProductRequest request =
                 ProductRequest.builder()
-                                .name("Classic Tee")
-                                .description("Soft cotton tee")
-                                .price(BigDecimal.valueOf(19.90))
-                                .gender(Gender.MEN)
-                                .categoryId(1L)
-                                .status(ProductStatus.ACTIVE)
-                                .variants(List.of(variantRequest))
-                                .build();
+                        .name("Classic Tee")
+                        .description("Soft cotton tee")
+                        .price(BigDecimal.valueOf(19.90))
+                        .gender(Gender.MEN)
+                        .categoryId(1L)
+                        .status(ProductStatus.ACTIVE)
+                        .variants(List.of(variantRequest))
+                        .imageUrl("https://res.cloudinary.com/demo/image/upload/sample.jpg")
+                        .build();
 
         when(productRepository.save(any(Product.class))).thenAnswer(invocation -> {
             Product p = invocation.getArgument(0);
@@ -227,6 +226,7 @@ class ProductServiceTest {
         assertEquals(1, response.getVariants().size());
         assertEquals("M", response.getVariants().get(0).getSize());
         assertEquals(10, response.getVariants().get(0).getStock());
+        assertEquals("https://res.cloudinary.com/demo/image/upload/sample.jpg", response.getImageUrl());
     }
 
     @Test
@@ -237,8 +237,8 @@ class ProductServiceTest {
         when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
 
         ProductRequest request = ProductRequest.builder()
-                        .categoryId(99L)
-                        .build();
+                .categoryId(99L)
+                .build();
 
         assertThrows(IllegalArgumentException.class, () -> productService.createProduct(request));
     }
@@ -418,5 +418,51 @@ class ProductServiceTest {
         assertEquals(1, results.size());
         assertEquals("White Tee", results.get(0).getName());
         assertEquals("ACTIVE", results.get(0).getStatus());
+    }
+
+    @Test
+    void activateProduct_productNotFound_throwsEntityNotFoundException() {
+        when(productRepository.findById(1L)).thenReturn(Optional.empty());
+        assertThrows(EntityNotFoundException.class, () -> productService.activateProduct(1L));
+    }
+
+    @Test
+    void activateProduct_wrongMerchant_throwsForbiddenException() {
+        Product product = mock(Product.class);
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        User merchant2 = mock(User.class);
+        when(product.getMerchant()).thenReturn(merchant2);
+        when(merchant2.getId()).thenReturn(2L);
+
+        User merchant = mock(User.class);
+        when(currentUserProvider.getCurrentMerchant()).thenReturn(merchant);
+        when(merchant.getId()).thenReturn(1L);
+
+        assertThrows(ForbiddenException.class, () -> productService.activateProduct(1L));
+    }
+
+    @Test
+    void activateProduct_returnsOkWithProductData() {
+        User merchant = mock(User.class);
+        when(merchant.getId()).thenReturn(1L);
+
+        Category category = mock(Category.class);
+        when(category.getName()).thenReturn("Tops");
+
+        Product product = new Product();
+        product.setMerchant(merchant);
+        product.setName("White Tee");
+        product.setDescription("soft and made of cotton");
+        product.setPrice(BigDecimal.valueOf(1));
+        product.setCategory(category);
+        product.setGender(Gender.MEN);
+
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(currentUserProvider.getCurrentMerchant()).thenReturn(merchant);
+        when(productRepository.save(any(Product.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ProductDetailResponse response = productService.activateProduct(1L);
+
+        assertEquals(ProductStatus.ACTIVE.name(), response.getStatus());
     }
 }

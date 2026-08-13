@@ -2,11 +2,14 @@ package nus.iss.smartcart.backend.controller;
 
 import nus.iss.smartcart.backend.dto.CheckoutRequest;
 import nus.iss.smartcart.backend.dto.CheckoutResponse;
+import nus.iss.smartcart.backend.dto.MerchantOrderItemResponse;
 import nus.iss.smartcart.backend.security.CurrentUserProvider;
 import nus.iss.smartcart.backend.service.OrderService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -33,5 +36,11 @@ public class OrderController {
     public ResponseEntity<CheckoutResponse> getOrderDetail(@PathVariable Long id) {
         Long userId = currentUserProvider.getCurrentCustomer().getId();
         return ResponseEntity.ok(orderService.getOrderDetail(id, userId));
+    }
+
+    @GetMapping("/merchant")
+    public ResponseEntity<List<MerchantOrderItemResponse>> getMerchantOrderItems() {
+        List<MerchantOrderItemResponse> response = orderService.getMerchantOrderItems();
+        return ResponseEntity.ok(response);
     }
 }

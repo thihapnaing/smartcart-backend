@@ -247,4 +247,65 @@ class PythonAiChatServiceTest {
         assertNull(response.getProducts().get(0).getProductId());
         assertNull(response.getProducts().get(0).getDefaultVariantId());
     }
+
+    // ── orders (order-mini-card support) ─────────────────────────────────
+
+    @Test
+    void handleMessage_populatesOrdersWhenAiServiceReturnsOrders() {
+        stubJsonReply("/api/chat", 200, "{\"reply\":\"Here's your order\",\"orders\":["
+            + "{\"orderId\":101,\"totalAmount\":45.50,\"status\":\"DELIVERED\",\"orderDate\":\"2026-08-01\"}]}");
+        when(chatSessionRepository.findBySessionId("session-10")).thenReturn(Optional.empty());
+        when(chatSessionRepository.save(any(ChatSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ChatResponse response = service.handleMessage("session-10", "Where is my order");
+
+        assertNotNull(response.getOrders());
+        assertEquals(1, response.getOrders().size());
+        assertEquals(101L, response.getOrders().get(0).getOrderId());
+        assertEquals("DELIVERED", response.getOrders().get(0).getStatus());
+        assertEquals("2026-08-01", response.getOrders().get(0).getOrderDate());
+        assertEquals(0, new java.math.BigDecimal("45.50").compareTo(response.getOrders().get(0).getTotalAmount()));
+    }
+
+    @Test
+    void handleMessage_skipsOrders_whenOrdersFieldIsNotAnArray() {
+        // Covers the false branch of ordersNode.isArray().
+        stubJsonReply("/api/chat", 200, "{\"reply\":\"Here you go\",\"orders\":{\"not\":\"an array\"}}");
+        when(chatSessionRepository.findBySessionId("session-11")).thenReturn(Optional.empty());
+        when(chatSessionRepository.save(any(ChatSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ChatResponse response = service.handleMessage("session-11", "Where is my order");
+
+        assertNotNull(response.getReply());
+        assertNull(response.getOrders());
+    }
+
+    @Test
+    void handleMessage_skipsOrders_whenOrdersArrayIsEmpty() {
+        // Covers the false branch of !ordersNode.isEmpty().
+        stubJsonReply("/api/chat", 200, "{\"reply\":\"Here you go\",\"orders\":[]}");
+        when(chatSessionRepository.findBySessionId("session-12")).thenReturn(Optional.empty());
+        when(chatSessionRepository.save(any(ChatSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ChatResponse response = service.handleMessage("session-12", "Where is my order");
+
+        assertNotNull(response.getReply());
+        assertNull(response.getOrders());
+    }
+
+    @Test
+    void handleMessage_mapsOrderWithMissingFieldsToNulls() {
+        // Covers the false (null) branch of each ternary in toOrderDtos.
+        stubJsonReply("/api/chat", 200, "{\"reply\":\"Here you go\",\"orders\":[{}]}");
+        when(chatSessionRepository.findBySessionId("session-13")).thenReturn(Optional.empty());
+        when(chatSessionRepository.save(any(ChatSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ChatResponse response = service.handleMessage("session-13", "Where is my order");
+
+        assertEquals(1, response.getOrders().size());
+        assertNull(response.getOrders().get(0).getOrderId());
+        assertNull(response.getOrders().get(0).getTotalAmount());
+        assertNull(response.getOrders().get(0).getStatus());
+        assertNull(response.getOrders().get(0).getOrderDate());
+    }
 }

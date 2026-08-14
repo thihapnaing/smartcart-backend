@@ -6,7 +6,7 @@ Flow:
     │
     └─ [LangGraph Workflow] (services/workflow.py)
          agent_node → OpenAI tool-calling loop, filtered to the two MCP tools
-                     → reply (+ products / based_on when tools were used)
+                     → reply (+ products / orders / based_on when tools were used)
 
 The MCP tools (get_order_history, search_products) are loaded once at
 startup from smartcart_mcp_server.py, spawned as a subprocess via
@@ -66,24 +66,13 @@ class AgentService:
             api_key=api_key, base_url=base_url, mcp_tools=mcp_tools
         )
 
-    # ── Public entry points (chat, recommend) ────────────────────────────────
+    # ── Public entry points (chat) ────────────────────────────────
 
-    async def chat(self, message: str, history: list, user_id: int | None) -> tuple[str, list | None]:
+    async def chat(self, message: str, history: list, user_id: int | None) -> tuple[str, list | None, list | None]:
         result = await self._workflow.ainvoke({
-            "mode": "chat",
             "message": message,
             "history": history or [],
             "user_id": user_id,
-            "reply": "", "products": None, "based_on": None,
+            "reply": "", "products": None, "orders": None, "based_on": None,
         })
-        return result["reply"], result.get("products")
-
-    async def recommend(self, user_id: int) -> tuple[str, list, str | None]:
-        result = await self._workflow.ainvoke({
-            "mode": "recommend",
-            "message": f"Recommend products for user ID {user_id}. Personalize based on their order history.",
-            "history": [],
-            "user_id": user_id,
-            "reply": "", "products": None, "based_on": None,
-        })
-        return result["reply"], (result.get("products") or []), result.get("based_on")
+        return result["reply"], result.get("products"), result.get("orders")

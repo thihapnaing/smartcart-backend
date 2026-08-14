@@ -1,7 +1,6 @@
 package nus.iss.smartcart.backend.model;
 
 import jakarta.persistence.*;
-import lombok.Builder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -12,7 +11,9 @@ import java.util.List;
 @Table (name = "orders")
 public class Order {
 
-    public Order() {}
+    public Order() {
+        // Required by JPA - Hibernate instantiates entities via reflection when loading from the DB.
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -47,6 +48,15 @@ public class Order {
     protected void onCreate() {
         this.orderDate = LocalDateTime.now();
     }
+
+    @Column(name = "tracking_no", unique = true)
+    private String trackingNo;
+
+    @Column(name = "delivery_person_id")
+    private Long deliveryPersonId;
+
+    @Column(name = "delivery_proof_key")
+    private String deliveryProofKey;
 
     //Getters and Setters
     public Long getId() {
@@ -132,4 +142,17 @@ public class Order {
     public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
     }
+
+    // for delivery app
+    public String getTrackingNo() {return trackingNo;}
+
+    public void setTrackingNo(String trackingNo) {this.trackingNo = trackingNo;}
+
+    public Long getDeliveryPersonId() {return deliveryPersonId;}
+
+    public void setDeliveryPersonId(Long deliveryPersonId) {this.deliveryPersonId = deliveryPersonId;}
+
+    public String getDeliveryProofKey() {return deliveryProofKey;}
+
+    public void setDeliveryProofKey(String deliveryProofKey) {this.deliveryProofKey = deliveryProofKey;}
 }

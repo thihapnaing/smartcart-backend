@@ -18,6 +18,7 @@ public class ChatResponse {
     private String sessionId;
     private String reply;
     private List<ProductSummaryDto> products;
+    private List<OrderSummaryDto> orders;
     private List<String> suggestions;
 
     public ChatResponse() {

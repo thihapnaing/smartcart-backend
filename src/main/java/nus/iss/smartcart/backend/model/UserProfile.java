@@ -10,8 +10,9 @@ import jakarta.persistence.*;
 @Table(name = "smartcart_user_profile")
 public class UserProfile {
 
-    // Required by JPA - Hibernate instantiates entities via reflection when loading from the DB.
-    public UserProfile() {}
+    public UserProfile() {
+        // Required by JPA - Hibernate instantiates entities via reflection when loading from the DB.
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

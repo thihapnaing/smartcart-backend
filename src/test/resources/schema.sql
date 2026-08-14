@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS product (
     price DECIMAL(10, 2),
     image_url VARCHAR(255),
     gender VARCHAR(50),
+    color VARCHAR(255) NOT NULL,
     category_id BIGINT,
     user_id BIGINT,
     shop_name VARCHAR(255),
@@ -71,6 +72,9 @@ CREATE TABLE IF NOT EXISTS orders (
     phone_number VARCHAR(50),
     delivered_at TIMESTAMP,
     order_date TIMESTAMP,
+    delivery_person_id BIGINT,
+    delivery_proof_key VARCHAR(255),
+    tracking_number VARCHAR(50),
     PRIMARY KEY (id)
 );
 

@@ -14,5 +14,6 @@ public class RegisterRequest {
     private String password;
 
     public RegisterRequest() {
+        // Intentionally left empty - required by Jackson for JSON deserialization
     }
 }

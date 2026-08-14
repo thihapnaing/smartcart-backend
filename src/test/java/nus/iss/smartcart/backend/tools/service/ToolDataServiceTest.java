@@ -73,6 +73,16 @@ class ToolDataServiceTest {
         return variant;
     }
 
+    private ProductVariant variantOf(long variantId, String productName, String imageUrl) {
+        Product product = new Product();
+        product.setName(productName);
+        product.setImageUrl(imageUrl);
+        ProductVariant variant = new ProductVariant();
+        ReflectionTestUtils.setField(variant, "id", variantId);
+        ReflectionTestUtils.setField(variant, "product", product);
+        return variant;
+    }
+
     private Order order(long id, BigDecimal totalAmount, OrderStatus status, LocalDateTime orderDate, ProductVariant... variants) {
         Order order = new Order();
         ReflectionTestUtils.setField(order, "id", id);
@@ -148,6 +158,64 @@ class ToolDataServiceTest {
         assertEquals(5, recentOrders.size());
         assertEquals(1L, recentOrders.get(0).get("orderId"));
         assertEquals("PAID", recentOrders.get(0).get("status"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getOrderHistory_usesRealTrackingNoAsOrderNumberWhenPresent() {
+        Order order = order(1L, new BigDecimal("10.00"), OrderStatus.DELIVERED, LocalDateTime.now());
+        order.setTrackingNo("SC-TRK-000001");
+        when(orderRepository.findByUserIdOrderByOrderDateDesc(1L)).thenReturn(List.of(order));
+
+        Map<String, Object> result = service().getOrderHistory(1L);
+
+        List<Map<String, Object>> recentOrders = (List<Map<String, Object>>) result.get("recentOrders");
+        assertEquals("SC-TRK-000001", recentOrders.get(0).get("orderNumber"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getOrderHistory_fallsBackToZeroPaddedOrderNumber_whenNoTrackingNo() {
+        Order order = order(7L, new BigDecimal("10.00"), OrderStatus.DELIVERED, LocalDateTime.now());
+        when(orderRepository.findByUserIdOrderByOrderDateDesc(1L)).thenReturn(List.of(order));
+
+        Map<String, Object> result = service().getOrderHistory(1L);
+
+        List<Map<String, Object>> recentOrders = (List<Map<String, Object>>) result.get("recentOrders");
+        assertEquals("SC-000007", recentOrders.get(0).get("orderNumber"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getOrderHistory_mapsItemsWithNameImageAndVariantId() {
+        ProductVariant variant = variantOf(11L, "Classic Crew Tee", "/assets/products/tee-crew.jpg");
+        Order order = order(1L, new BigDecimal("19.90"), OrderStatus.DELIVERED, LocalDateTime.now(), variant);
+        order.getItems().get(0).setUnitPrice(new BigDecimal("19.90"));
+        order.getItems().get(0).setQuantity(2);
+        when(orderRepository.findByUserIdOrderByOrderDateDesc(1L)).thenReturn(List.of(order));
+
+        Map<String, Object> result = service().getOrderHistory(1L);
+
+        List<Map<String, Object>> recentOrders = (List<Map<String, Object>>) result.get("recentOrders");
+        List<Map<String, Object>> items = (List<Map<String, Object>>) recentOrders.get(0).get("items");
+        assertEquals(1, items.size());
+        assertEquals("Classic Crew Tee", items.get(0).get("name"));
+        assertEquals("/assets/products/tee-crew.jpg", items.get(0).get("imageUrl"));
+        assertEquals(new BigDecimal("19.90"), items.get(0).get("price"));
+        assertEquals(2, items.get(0).get("quantity"));
+        assertEquals(11L, items.get(0).get("productVariantId"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getOrderHistory_mapsItemsToEmptyListWhenOrderHasNoItems() {
+        Order order = order(1L, new BigDecimal("10.00"), OrderStatus.DELIVERED, LocalDateTime.now());
+        when(orderRepository.findByUserIdOrderByOrderDateDesc(1L)).thenReturn(List.of(order));
+
+        Map<String, Object> result = service().getOrderHistory(1L);
+
+        List<Map<String, Object>> recentOrders = (List<Map<String, Object>>) result.get("recentOrders");
+        assertEquals(List.of(), recentOrders.get(0).get("items"));
     }
 
     // ── searchProducts ───────────────────────────────────────────────────

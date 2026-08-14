@@ -42,6 +42,32 @@ def test_get_order_history_returns_error_json_when_backend_call_fails(mock_get):
 
 
 @patch("services.smartcart_tools.requests.get")
+def test_get_spending_summary_strips_recent_orders_from_backend_response(mock_get):
+    mock_get.return_value = _FakeResponse({
+        "orderCount": 2, "topCategory": "Tops", "totalSpent": 189.30,
+        "recentOrders": [{"orderId": 1, "totalAmount": 144.50}],
+    })
+
+    result = st.get_spending_summary(42)
+
+    assert json.loads(result) == {"orderCount": 2, "topCategory": "Tops", "totalSpent": 189.30}
+    mock_get.assert_called_once_with(
+        "http://localhost:8080/internal/tools/order-history",
+        params={"userId": 42},
+        timeout=10,
+    )
+
+
+@patch("services.smartcart_tools.requests.get")
+def test_get_spending_summary_returns_error_json_when_backend_call_fails(mock_get):
+    mock_get.side_effect = ConnectionError("backend down")
+
+    result = st.get_spending_summary(42)
+
+    assert json.loads(result) == {"error": "backend down"}
+
+
+@patch("services.smartcart_tools.requests.get")
 def test_search_products_only_includes_provided_filters(mock_get):
     mock_get.return_value = _FakeResponse({"products": []})
 

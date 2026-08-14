@@ -2,7 +2,10 @@ package nus.iss.smartcart.backend.controller;
 
 import nus.iss.smartcart.backend.dto.UserProfileForDeliveryDetails;
 import nus.iss.smartcart.backend.model.User;
+import nus.iss.smartcart.backend.repository.UserRepository;
 import nus.iss.smartcart.backend.security.CurrentUserProvider;
+import nus.iss.smartcart.backend.security.CustomUserDetailsService;
+import nus.iss.smartcart.backend.security.JwtService;
 import nus.iss.smartcart.backend.service.UserProfileService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,6 +27,9 @@ class UserProfileControllerTest {
 
     @MockitoBean private UserProfileService userProfileService;
     @MockitoBean private CurrentUserProvider currentUserProvider;
+    @MockitoBean private JwtService jwtService;
+    @MockitoBean private CustomUserDetailsService customUserDetailsService;
+    @MockitoBean private UserRepository userRepository;
 
     @BeforeEach
     void setUpCurrentCustomer() {

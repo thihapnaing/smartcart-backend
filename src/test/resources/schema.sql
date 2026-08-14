@@ -72,6 +72,9 @@ CREATE TABLE IF NOT EXISTS orders (
     phone_number VARCHAR(50),
     delivered_at TIMESTAMP,
     order_date TIMESTAMP,
+    delivery_person_id BIGINT,
+    delivery_proof_key VARCHAR(255),
+    tracking_number VARCHAR(50),
     PRIMARY KEY (id)
 );
 

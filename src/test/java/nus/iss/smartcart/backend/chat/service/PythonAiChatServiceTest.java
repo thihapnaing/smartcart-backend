@@ -304,8 +304,64 @@ class PythonAiChatServiceTest {
 
         assertEquals(1, response.getOrders().size());
         assertNull(response.getOrders().get(0).getOrderId());
+        assertNull(response.getOrders().get(0).getOrderNumber());
         assertNull(response.getOrders().get(0).getTotalAmount());
         assertNull(response.getOrders().get(0).getStatus());
         assertNull(response.getOrders().get(0).getOrderDate());
+        assertTrue(response.getOrders().get(0).getItems().isEmpty());
+    }
+
+    @Test
+    void handleMessage_populatesOrderNumberAndItems() {
+        stubJsonReply("/api/chat", 200, "{\"reply\":\"Here's your order\",\"orders\":["
+            + "{\"orderId\":101,\"orderNumber\":\"SC-000101\",\"totalAmount\":45.50,"
+            + "\"status\":\"DELIVERED\",\"orderDate\":\"2026-08-01\",\"items\":["
+            + "{\"name\":\"Tee\",\"price\":19.90,\"imageUrl\":\"http://x/tee.jpg\","
+            + "\"quantity\":2,\"productVariantId\":5}]}]}");
+        when(chatSessionRepository.findBySessionId("session-14")).thenReturn(Optional.empty());
+        when(chatSessionRepository.save(any(ChatSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ChatResponse response = service.handleMessage("session-14", "Where is my order");
+
+        var order = response.getOrders().get(0);
+        assertEquals("SC-000101", order.getOrderNumber());
+        assertEquals(1, order.getItems().size());
+        var item = order.getItems().get(0);
+        assertEquals("Tee", item.getName());
+        assertEquals(0, new java.math.BigDecimal("19.90").compareTo(item.getPrice()));
+        assertEquals("http://x/tee.jpg", item.getImageUrl());
+        assertEquals(2, item.getQuantity());
+        assertEquals(5L, item.getProductVariantId());
+    }
+
+    @Test
+    void handleMessage_treatsNonListItemsFieldAsNoItems() {
+        // Covers the "rawItems instanceof List" false branch in toOrderItemDtos.
+        stubJsonReply("/api/chat", 200, "{\"reply\":\"Here you go\",\"orders\":["
+            + "{\"orderId\":101,\"items\":\"not a list\"}]}");
+        when(chatSessionRepository.findBySessionId("session-15")).thenReturn(Optional.empty());
+        when(chatSessionRepository.save(any(ChatSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ChatResponse response = service.handleMessage("session-15", "Where is my order");
+
+        assertTrue(response.getOrders().get(0).getItems().isEmpty());
+    }
+
+    @Test
+    void handleMessage_mapsOrderItemWithMissingFieldsToNulls() {
+        // Covers the false (null) branch of each ternary in toOrderItemDtos.
+        stubJsonReply("/api/chat", 200, "{\"reply\":\"Here you go\",\"orders\":["
+            + "{\"orderId\":101,\"items\":[{}]}]}");
+        when(chatSessionRepository.findBySessionId("session-16")).thenReturn(Optional.empty());
+        when(chatSessionRepository.save(any(ChatSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ChatResponse response = service.handleMessage("session-16", "Where is my order");
+
+        var item = response.getOrders().get(0).getItems().get(0);
+        assertNull(item.getName());
+        assertNull(item.getPrice());
+        assertNull(item.getImageUrl());
+        assertNull(item.getQuantity());
+        assertNull(item.getProductVariantId());
     }
 }

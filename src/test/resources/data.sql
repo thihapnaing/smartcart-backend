@@ -23,13 +23,17 @@ INSERT INTO category (id, name) VALUES
     ON DUPLICATE KEY UPDATE name = VALUES(name);
 
 -- -------------------------------------------------------------
--- Users (password is the bcrypt-less placeholder 'password123' -
--- demo data only, never used in prod)
+-- Users. Password for every seeded account is "password123", stored as a
+-- real BCrypt hash (strength 10, matching SecurityConfig's
+-- BCryptPasswordEncoder()) so POST /api/auth/login actually works against
+-- these rows - the previous plaintext placeholder always failed
+-- passwordEncoder.matches() once real login was wired up.
 -- -------------------------------------------------------------
 INSERT INTO `smartcart_user` (id, username, email, password, role, status, created_at) VALUES
-                                                                                           (1, 'smartcart_official', 'merchant@smartcart.demo', 'password123', 'MERCHANT', 'ACTIVE', DATE_SUB(NOW(), INTERVAL 200 DAY)),
-                                                                                           (2, 'grace', 'grace@smartcart.demo', 'password123', 'CUSTOMER', 'ACTIVE', DATE_SUB(NOW(), INTERVAL 120 DAY)),
-                                                                                           (3, 'alex', 'alex@smartcart.demo', 'password123', 'CUSTOMER', 'ACTIVE', DATE_SUB(NOW(), INTERVAL 90 DAY))
+                                                                                           (1, 'smartcart_official', 'merchant@smartcart.demo', '$2b$10$ZY6WZo/5w8s3aeZPuz2wFOAt6AcLDrxOC.zfhgRTf4udd.KkjHJj6', 'MERCHANT', 'ACTIVE', DATE_SUB(NOW(), INTERVAL 200 DAY)),
+                                                                                           (2, 'grace', 'grace@smartcart.demo', '$2b$10$ZY6WZo/5w8s3aeZPuz2wFOAt6AcLDrxOC.zfhgRTf4udd.KkjHJj6', 'CUSTOMER', 'ACTIVE', DATE_SUB(NOW(), INTERVAL 120 DAY)),
+                                                                                           (3, 'alex', 'alex@smartcart.demo', '$2b$10$ZY6WZo/5w8s3aeZPuz2wFOAt6AcLDrxOC.zfhgRTf4udd.KkjHJj6', 'CUSTOMER', 'ACTIVE', DATE_SUB(NOW(), INTERVAL 90 DAY)),
+                                                                                           (4, 'admin', 'admin@smartcart.demo', '$2b$10$ZY6WZo/5w8s3aeZPuz2wFOAt6AcLDrxOC.zfhgRTf4udd.KkjHJj6', 'ADMIN', 'ACTIVE', DATE_SUB(NOW(), INTERVAL 200 DAY))
     ON DUPLICATE KEY UPDATE
                          username = VALUES(username), email = VALUES(email), password = VALUES(password),
                          role = VALUES(role), status = VALUES(status), created_at = VALUES(created_at);
@@ -37,7 +41,8 @@ INSERT INTO `smartcart_user` (id, username, email, password, role, status, creat
 INSERT INTO smartcart_user_profile (id, user_id, first_name, last_name, address, postal_code, phone_number, avatar_url, shop_name, interests, preferred_categories, budget) VALUES
                                                                                                                                                                                 (1, 1, 'SmartCart', 'Official', '1 Store Road, Singapore', '018956', '65001234', NULL, 'SmartCart Official', NULL, NULL, NULL),
                                                                                                                                                                                 (2, 2, 'Grace', 'Tan', '123 Orchard Road, Singapore', '238888', '91234567', NULL, NULL, 'Linen,Breathable,Summer', 'Tops,Bottoms', 200.00),
-                                                                                                                                                                                (3, 3, 'Alex', 'Lim', '45 Bukit Timah Road, Singapore', '229899', '98765432', NULL, NULL, 'Casual,Cotton,Minimalist', 'Tops,Shoes', 150.00)
+                                                                                                                                                                                (3, 3, 'Alex', 'Lim', '45 Bukit Timah Road, Singapore', '229899', '98765432', NULL, NULL, 'Casual,Cotton,Minimalist', 'Tops,Shoes', 150.00),
+                                                                                                                                                                                (4, 4, 'SmartCart', 'Admin', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
     ON DUPLICATE KEY UPDATE
                          user_id = VALUES(user_id), first_name = VALUES(first_name), last_name = VALUES(last_name),
                          address = VALUES(address), postal_code = VALUES(postal_code), phone_number = VALUES(phone_number),
@@ -154,12 +159,14 @@ INSERT INTO product_variant (id, product_id, size, stock) VALUES
 -- recommendation / order-history tools have something meaningful to
 -- work with (e.g. "based on your past orders in Tops...").
 -- -------------------------------------------------------------
-INSERT INTO orders (id, user_id, total_amount, status, first_name, last_name, shipping_address, phone_number, delivered_at, order_date) VALUES
-    (1, 2, 44.80, 'DELIVERED', 'Grace', 'Tan', '123 Orchard Road, Singapore', '91234567', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 5 DAY))
+INSERT INTO orders (id, user_id, total_amount, status, first_name, last_name, shipping_address, phone_number, delivered_at, order_date, tracking_no, delivery_person_id, delivery_proof_key) VALUES
+    (1, 2, 44.80, 'DELIVERED', 'Grace', 'Tan', '123 Orchard Road, Singapore', '91234567', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 5 DAY), 'SC-TRK-000001', NULL, 'delivery-proofs/order-1-proof.jpg')
     ON DUPLICATE KEY UPDATE
                          user_id = VALUES(user_id), total_amount = VALUES(total_amount), status = VALUES(status),
                          first_name = VALUES(first_name), last_name = VALUES(last_name), shipping_address = VALUES(shipping_address),
-                         phone_number = VALUES(phone_number), delivered_at = VALUES(delivered_at), order_date = VALUES(order_date);
+                         phone_number = VALUES(phone_number), delivered_at = VALUES(delivered_at), order_date = VALUES(order_date),
+                         tracking_no = VALUES(tracking_no), delivery_person_id = VALUES(delivery_person_id),
+                         delivery_proof_key = VALUES(delivery_proof_key);
 
 INSERT INTO order_item (id, order_id, product_variant_id, quantity, unit_price) VALUES
                                                                                     (1, 1, 2, 1, 19.90),

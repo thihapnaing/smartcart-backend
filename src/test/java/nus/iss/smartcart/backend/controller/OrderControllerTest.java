@@ -8,7 +8,10 @@ import nus.iss.smartcart.backend.dto.MerchantOrderItemResponse;
 import nus.iss.smartcart.backend.model.OrderStatus;
 import nus.iss.smartcart.backend.model.PaymentMethod;
 import nus.iss.smartcart.backend.model.User;
+import nus.iss.smartcart.backend.repository.UserRepository;
 import nus.iss.smartcart.backend.security.CurrentUserProvider;
+import nus.iss.smartcart.backend.security.CustomUserDetailsService;
+import nus.iss.smartcart.backend.security.JwtService;
 import nus.iss.smartcart.backend.service.OrderService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,6 +38,9 @@ class OrderControllerTest {
 
     @MockitoBean private OrderService orderService;
     @MockitoBean private CurrentUserProvider currentUserProvider;
+    @MockitoBean private JwtService jwtService;
+    @MockitoBean private CustomUserDetailsService customUserDetailsService;
+    @MockitoBean private UserRepository userRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 

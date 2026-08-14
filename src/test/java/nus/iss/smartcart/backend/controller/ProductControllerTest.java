@@ -8,6 +8,9 @@ import nus.iss.smartcart.backend.dto.VariantRequest;
 import nus.iss.smartcart.backend.exception.ImageUploadException;
 import nus.iss.smartcart.backend.model.Gender;
 import nus.iss.smartcart.backend.model.ProductStatus;
+import nus.iss.smartcart.backend.repository.UserRepository;
+import nus.iss.smartcart.backend.security.CustomUserDetailsService;
+import nus.iss.smartcart.backend.security.JwtService;
 import nus.iss.smartcart.backend.service.ImageSearchService;
 import nus.iss.smartcart.backend.service.ImageUploadService;
 import nus.iss.smartcart.backend.service.ProductService;
@@ -38,6 +41,9 @@ class ProductControllerTest {
     @MockitoBean private ProductService productService;
     @MockitoBean private ImageUploadService imageUploadService;
     @MockitoBean private ImageSearchService imageSearchService;
+    @MockitoBean private JwtService jwtService;
+    @MockitoBean private CustomUserDetailsService customUserDetailsService;
+    @MockitoBean private UserRepository userRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 

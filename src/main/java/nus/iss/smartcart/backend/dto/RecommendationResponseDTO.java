@@ -31,7 +31,7 @@ public class RecommendationResponseDTO {
         @JsonProperty("reason")
         private String reason;
 
-        public RecommendationItem() {}
+        public RecommendationItem() { /* Intentionally left empty - required by Jackson for JSON deserialization */ }
 
         public String getProductId() { return productId; }
         public void setProductId(String productId) { this.productId = productId; }

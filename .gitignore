@@ -69,6 +69,7 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+.pytest_cache/
 
 # Chroma DB & Vector Store
 smartcart-ai-service/chroma_db/

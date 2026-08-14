@@ -5,6 +5,7 @@ import nus.iss.smartcart.backend.model.Order;
 import nus.iss.smartcart.backend.security.CurrentUserProvider;
 import nus.iss.smartcart.backend.service.OrderService;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -44,6 +45,27 @@ public class OrderController {
     }
 
     // for delivery app
+//    @GetMapping("/orders")
+//    public List<Order> getAllOrders() {
+//        return orderService.getAllOrders();
+//    }
+
+    @GetMapping(
+            value = "/orders",
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    public ResponseEntity<List<DeliveryOrderDto>> getDeliveryOrders() {
+        return ResponseEntity.ok(
+                orderService.getDeliveryOrders()
+        );
+    }
+//    @GetMapping("/orders")
+//    public ResponseEntity<List<DeliveryOrderDto>> getDeliveryOrders() {
+//        return ResponseEntity.ok(
+//                orderService.getDeliveryOrders()
+//        );
+//    }
+
     @GetMapping("/assigned/{deliveryPersonId}")
     public ResponseEntity<List<Order>> getAssignedOrders(
             @PathVariable Long deliveryPersonId

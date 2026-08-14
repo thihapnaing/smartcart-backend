@@ -362,60 +362,6 @@ public class OrderService {
         return savedOrder;
     }
 
-//    @Transactional
-//    public Order updateDeliveryDetails(
-//            Long orderId,
-//            UpdateDeliveryRequest request
-//    ) {
-//        Order order = orderRepository
-//                .findById(orderId)
-//                .orElseThrow(() ->
-//                        new ResponseStatusException(
-//                                HttpStatus.NOT_FOUND,
-//                                "Order not found"
-//                        )
-//                );
-//
-//        if (request.getTrackingNo() != null &&
-//                !request.getTrackingNo().isBlank()) {
-//
-//            String trackingNo =
-//                    request.getTrackingNo().trim();
-//
-//            orderRepository
-//                    .findByTrackingNo(trackingNo)
-//                    .filter(existingOrder ->
-//                            !existingOrder.getId()
-//                                    .equals(orderId)
-//                    )
-//                    .ifPresent(existingOrder -> {
-//                        throw new ResponseStatusException(
-//                                HttpStatus.CONFLICT,
-//                                "Tracking number already exists"
-//                        );
-//                    });
-//
-//            order.setTrackingNo(trackingNo);
-//        }
-//
-//        if (request.getDeliveryPersonId() != null) {
-//            order.setDeliveryPersonId(
-//                    request.getDeliveryPersonId()
-//            );
-//        }
-//
-//        if (request.getStatus() != null) {
-//            order.setStatus(request.getStatus());
-//        }
-//
-//        if (request.getDeliveryPersonId() != null){
-//            pushNotificationService.notifyJobAssigned(
-//                    order
-//            );
-//        }
-//        return orderRepository.save(order);
-//    }
-
     @Transactional
     public Order updateDeliveryDetails(
             Long orderId,
@@ -492,17 +438,32 @@ public class OrderService {
                     savedOrder
             );
         }
-//        boolean newlyAssigned =
-//                request.getDeliveryPersonId() != null &&
-//                        !request.getDeliveryPersonId()
-//                                .equals(previousDeliveryPersonId);
-//
-//        if (newlyAssigned) {
-//            pushNotificationService.notifyJobAssigned(
-//                    savedOrder
-//            );
-//        }
-
         return savedOrder;
+    }
+
+    @Transactional(readOnly = true)
+    public List<DeliveryOrderDto> getDeliveryOrders() {
+        return orderRepository.findAll()
+                .stream()
+                .map(this::toDeliveryOrderDto)
+                .toList();
+    }
+
+    private DeliveryOrderDto toDeliveryOrderDto(Order order) {
+        return new DeliveryOrderDto(
+                order.getId(),
+                order.getFirstName(),
+                order.getLastName(),
+                order.getStatus() != null
+                        ? order.getStatus().name()
+                        : null,
+                order.getTrackingNo(),
+                order.getDeliveryPersonId(),
+
+                // Order currently stores only the delivery-person ID
+                null,
+
+                order.getDeliveredAt()
+        );
     }
 }

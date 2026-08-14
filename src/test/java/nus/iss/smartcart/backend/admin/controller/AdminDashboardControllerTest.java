@@ -6,6 +6,9 @@ import nus.iss.smartcart.backend.admin.dto.AdminDashboardStatsDto;
 import nus.iss.smartcart.backend.admin.dto.CategoryCountDto;
 import nus.iss.smartcart.backend.admin.dto.GenderCountDto;
 import nus.iss.smartcart.backend.admin.service.AdminDashboardService;
+import nus.iss.smartcart.backend.repository.UserRepository;
+import nus.iss.smartcart.backend.security.CustomUserDetailsService;
+import nus.iss.smartcart.backend.security.JwtService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -28,6 +31,9 @@ class AdminDashboardControllerTest {
     @Autowired private MockMvc mockMvc;
 
     @MockitoBean private AdminDashboardService adminDashboardService;
+    @MockitoBean private JwtService jwtService;
+    @MockitoBean private CustomUserDetailsService customUserDetailsService;
+    @MockitoBean private UserRepository userRepository;
 
     @Test
     void getStats_returnsOkWithDashboardStats() throws Exception {

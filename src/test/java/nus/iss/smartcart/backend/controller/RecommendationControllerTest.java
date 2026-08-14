@@ -2,6 +2,9 @@ package nus.iss.smartcart.backend.controller;
 
 import nus.iss.smartcart.backend.dto.RecommendationResultDTO;
 import nus.iss.smartcart.backend.dto.RecommendedProductResponseDTO;
+import nus.iss.smartcart.backend.repository.UserRepository;
+import nus.iss.smartcart.backend.security.CustomUserDetailsService;
+import nus.iss.smartcart.backend.security.JwtService;
 import nus.iss.smartcart.backend.service.RecommendationOrchestratorService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +33,9 @@ class RecommendationControllerTest {
     // 3. Swapped the removed @MockBean for @MockitoBean
     @MockitoBean
     private RecommendationOrchestratorService recommendationService;
+    @MockitoBean private JwtService jwtService;
+    @MockitoBean private CustomUserDetailsService customUserDetailsService;
+    @MockitoBean private UserRepository userRepository;
 
     @Test
     void testGetRecommendations_Returns200() throws Exception {

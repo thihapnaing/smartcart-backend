@@ -5,6 +5,7 @@ package nus.iss.smartcart.backend.admin.service;
 import nus.iss.smartcart.backend.admin.dto.AdminDashboardStatsDto;
 import nus.iss.smartcart.backend.admin.dto.CategoryCountDto;
 import nus.iss.smartcart.backend.admin.dto.GenderCountDto;
+import nus.iss.smartcart.backend.dto.PublicStatsDto;
 import nus.iss.smartcart.backend.model.Category;
 import nus.iss.smartcart.backend.model.Gender;
 import nus.iss.smartcart.backend.model.Order;
@@ -233,5 +234,74 @@ class AdminDashboardServiceTest {
         assertEquals("Newest", stats.getRecentListings().get(0).getName());
         assertTrue(stats.getRecentListings().stream().noneMatch(p -> p.getName().equals("NoDate")));
         assertTrue(stats.getRecentListings().stream().noneMatch(p -> p.getName().equals("Oldest")));
+    }
+
+    // ── getPublicStats ───────────────────────────────────────────────────
+    // Backs the unauthenticated /admin/login screen (PublicStatsController) - unlike getStats(),
+    // must NOT require an already-logged-in admin.
+
+    @Test
+    void getPublicStats_neverCallsTheAdminGuard() {
+        when(productRepository.findAll()).thenReturn(List.of());
+        when(orderRepository.findAll()).thenReturn(List.of());
+        when(userRepository.findAll()).thenReturn(List.of());
+
+        adminDashboardService.getPublicStats();
+
+        verifyNoInteractions(currentUserProvider);
+    }
+
+    @Test
+    void getPublicStats_countsActiveListingsOnly() {
+        LocalDateTime now = LocalDateTime.now();
+        List<Product> products = List.of(
+                mockProduct(1, "Tee", "Tops", Gender.MEN, ProductStatus.ACTIVE, now),
+                mockProduct(2, "Jeans", "Bottoms", Gender.MEN, ProductStatus.ACTIVE, now),
+                mockProduct(3, "Sneakers", "Shoes", Gender.WOMEN, ProductStatus.INACTIVE, now)
+        );
+        when(productRepository.findAll()).thenReturn(products);
+        when(orderRepository.findAll()).thenReturn(List.of());
+        when(userRepository.findAll()).thenReturn(List.of());
+
+        PublicStatsDto stats = adminDashboardService.getPublicStats();
+
+        assertEquals(2, stats.getActiveListings());
+    }
+
+    @Test
+    void getPublicStats_countsMerchantRoleUsersOnly() {
+        when(productRepository.findAll()).thenReturn(List.of());
+        when(orderRepository.findAll()).thenReturn(List.of());
+
+        User merchant = mock(User.class);
+        when(merchant.getRole()).thenReturn(UserRole.MERCHANT);
+        User customer = mock(User.class);
+        when(customer.getRole()).thenReturn(UserRole.CUSTOMER);
+
+        when(userRepository.findAll()).thenReturn(List.of(merchant, customer));
+
+        PublicStatsDto stats = adminDashboardService.getPublicStats();
+
+        assertEquals(1, stats.getActiveMerchants());
+    }
+
+    @Test
+    void getPublicStats_totalRevenue_onlyCountsPaidPackedDelivered() {
+        when(productRepository.findAll()).thenReturn(List.of());
+        when(userRepository.findAll()).thenReturn(List.of());
+
+        List<Order> orders = List.of(
+                mockOrder(OrderStatus.PAID, BigDecimal.valueOf(100)),
+                mockOrder(OrderStatus.PACKED, BigDecimal.valueOf(50)),
+                mockOrder(OrderStatus.DELIVERED, BigDecimal.valueOf(25)),
+                mockOrder(OrderStatus.PENDING, BigDecimal.valueOf(999)),
+                mockOrder(OrderStatus.CANCELLED, BigDecimal.valueOf(999)),
+                mockOrder(OrderStatus.PAID, null)
+        );
+        when(orderRepository.findAll()).thenReturn(orders);
+
+        PublicStatsDto stats = adminDashboardService.getPublicStats();
+
+        assertEquals(0, BigDecimal.valueOf(175).compareTo(stats.getTotalRevenue()));
     }
 }

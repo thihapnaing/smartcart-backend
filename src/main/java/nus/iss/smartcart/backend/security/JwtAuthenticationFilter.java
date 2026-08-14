@@ -11,13 +11,12 @@ import nus.iss.smartcart.backend.repository.UserRepository;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-//Author: Junior
+// Author: Junior
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -57,14 +56,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
 
-            String email = jwtService.extractEmail(token);
+            // JWT now contains username
+            String username = jwtService.extractUsername(token);
 
-            if (email != null &&
+            if (username != null &&
                     SecurityContextHolder
                             .getContext()
                             .getAuthentication() == null) {
 
-                User user = userRepository.findByEmail(email)
+                User user = userRepository
+                        .findByUsername(username)
                         .orElse(null);
 
                 if (user != null &&
@@ -72,10 +73,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                     UserDetails userDetails =
                             userDetailsService
-                                    .loadUserByUsername(email);
+                                    .loadUserByUsername(username);
 
-                    UsernamePasswordAuthenticationToken
-                            authentication =
+                    UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails,
                                     null,

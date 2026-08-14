@@ -13,7 +13,8 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 -- Sample merchant account.
 -- Replace/remove this block if your project already seeds users.
-INSERT INTO smartcart_user (id, username, email, password, role, status, created_at) VALUES (1, 'demo_merchant', 'merchant@smartcart.local', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'MERCHANT', 'ACTIVE', CURRENT_TIMESTAMP);
+INSERT INTO smartcart_user (id, username, email, password, role, status, created_at) VALUES (1, 'Junior', 'merchant@smartcart.local', '$2a$10$gE1fazO7Msibb35/UJ8a7.qGOghpIwW1JGG89uUn4IhJUTVh/SdqK', 'MERCHANT', 'ACTIVE', CURRENT_TIMESTAMP),
+                                                                                            (2, 'Junior2', 'merchant@smartcart.local', '$2a$10$gE1fazO7Msibb35/UJ8a7.qGOghpIwW1JGG89uUn4IhJUTVh/SdqK', 'CUSTOMER', 'ACTIVE', CURRENT_TIMESTAMP);
 
 -- Category names intentionally match the CNN category values so the current
 -- repository query LOWER(c.name) = LOWER(:category) matches without translation.

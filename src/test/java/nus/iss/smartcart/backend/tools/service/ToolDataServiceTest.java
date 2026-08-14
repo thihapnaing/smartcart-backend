@@ -77,6 +77,9 @@ class ToolDataServiceTest {
         Product product = new Product();
         product.setName(productName);
         product.setImageUrl(imageUrl);
+        // category is NOT NULL on Product in production; getOrderHistory() dereferences it
+        // unconditionally, so the fixture needs one too even though this test doesn't assert on it.
+        product.setCategory(category("Tops"));
         ProductVariant variant = new ProductVariant();
         ReflectionTestUtils.setField(variant, "id", variantId);
         ReflectionTestUtils.setField(variant, "product", product);

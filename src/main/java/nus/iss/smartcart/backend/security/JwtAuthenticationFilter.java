@@ -11,6 +11,7 @@ import nus.iss.smartcart.backend.repository.UserRepository;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -30,6 +31,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             CustomUserDetailsService userDetailsService,
             UserRepository userRepository
     ) {
+
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
         this.userRepository = userRepository;
@@ -52,28 +54,35 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        String token = authorization.substring(7);
+        String token =
+                authorization.substring(7);
 
         try {
 
-            // JWT now contains username
-            String username = jwtService.extractUsername(token);
+            // JWT subject is now EMAIL
+            String email =
+                    jwtService.extractEmail(token);
 
-            if (username != null &&
+            if (email != null &&
                     SecurityContextHolder
                             .getContext()
                             .getAuthentication() == null) {
 
-                User user = userRepository
-                        .findByUsername(username)
-                        .orElse(null);
+                // Find user using EMAIL
+                User user =
+                        userRepository
+                                .findByEmail(email)
+                                .orElse(null);
 
                 if (user != null &&
-                        jwtService.isTokenValid(token, user)) {
+                        jwtService.isTokenValid(
+                                token,
+                                user
+                        )) {
 
                     UserDetails userDetails =
                             userDetailsService
-                                    .loadUserByUsername(username);
+                                    .loadUserByEmail(email);
 
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(
@@ -89,8 +98,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
         } catch (Exception ignored) {
+
             // Invalid JWT.
-            // Request will continue without authentication.
+            // Request continues without authentication.
         }
 
         filterChain.doFilter(request, response);

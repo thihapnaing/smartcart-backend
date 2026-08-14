@@ -104,10 +104,10 @@ public class AuthService {
     public LoginResponse login(LoginRequest request) {
 
         User user = userRepository
-                .findByUsername(request.getUsername())
+                .findByEmail(request.getUsername())
                 .orElseThrow(() ->
                         new IllegalArgumentException(
-                                "Invalid username or password"
+                                "Invalid email or password"
                         )
                 );
 

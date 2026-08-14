@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS product (
     price DECIMAL(10, 2),
     image_url VARCHAR(255),
     gender VARCHAR(50),
+    color VARCHAR(255) NOT NULL,
     category_id BIGINT,
     user_id BIGINT,
     shop_name VARCHAR(255),

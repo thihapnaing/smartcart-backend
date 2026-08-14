@@ -155,4 +155,18 @@ public class OrderController {
         );
     }
 
+    @PatchMapping("/{orderId}/delivery-details")
+    public ResponseEntity<Order> updateDeliveryDetails(
+            @PathVariable Long orderId,
+            @RequestBody UpdateDeliveryRequest request
+    ) {
+        Order updatedOrder =
+                orderService.updateDeliveryDetails(
+                        orderId,
+                        request
+                );
+
+        return ResponseEntity.ok(updatedOrder);
+    }
+
 }

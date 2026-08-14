@@ -25,8 +25,9 @@ public class OrderService {
     private final OrderItemRepository orderItemRepository;
     private final PaymentRepository paymentRepository;
     private final CurrentUserProvider currentUserProvider;
+    private final PushNotificationService pushNotificationService;
 
-    public OrderService(CartRepository cartRepository, CartItemRepository cartItemRepository, ProductVariantRepository productVariantRepository, UserRepository userRepository, OrderRepository orderRepository, OrderItemRepository orderItemRepository, PaymentRepository paymentRepository, CurrentUserProvider currentUserProvider) {
+    public OrderService(CartRepository cartRepository, CartItemRepository cartItemRepository, ProductVariantRepository productVariantRepository, UserRepository userRepository, OrderRepository orderRepository, OrderItemRepository orderItemRepository, PaymentRepository paymentRepository, CurrentUserProvider currentUserProvider,  PushNotificationService pushNotificationService) {
         this.cartRepository = cartRepository;
         this.cartItemRepository = cartItemRepository;
         this.productVariantRepository = productVariantRepository;
@@ -35,6 +36,7 @@ public class OrderService {
         this.orderItemRepository = orderItemRepository;
         this.paymentRepository = paymentRepository;
         this.currentUserProvider = currentUserProvider;
+        this.pushNotificationService = pushNotificationService;
     }
 
     @Transactional
@@ -360,4 +362,147 @@ public class OrderService {
         return savedOrder;
     }
 
+//    @Transactional
+//    public Order updateDeliveryDetails(
+//            Long orderId,
+//            UpdateDeliveryRequest request
+//    ) {
+//        Order order = orderRepository
+//                .findById(orderId)
+//                .orElseThrow(() ->
+//                        new ResponseStatusException(
+//                                HttpStatus.NOT_FOUND,
+//                                "Order not found"
+//                        )
+//                );
+//
+//        if (request.getTrackingNo() != null &&
+//                !request.getTrackingNo().isBlank()) {
+//
+//            String trackingNo =
+//                    request.getTrackingNo().trim();
+//
+//            orderRepository
+//                    .findByTrackingNo(trackingNo)
+//                    .filter(existingOrder ->
+//                            !existingOrder.getId()
+//                                    .equals(orderId)
+//                    )
+//                    .ifPresent(existingOrder -> {
+//                        throw new ResponseStatusException(
+//                                HttpStatus.CONFLICT,
+//                                "Tracking number already exists"
+//                        );
+//                    });
+//
+//            order.setTrackingNo(trackingNo);
+//        }
+//
+//        if (request.getDeliveryPersonId() != null) {
+//            order.setDeliveryPersonId(
+//                    request.getDeliveryPersonId()
+//            );
+//        }
+//
+//        if (request.getStatus() != null) {
+//            order.setStatus(request.getStatus());
+//        }
+//
+//        if (request.getDeliveryPersonId() != null){
+//            pushNotificationService.notifyJobAssigned(
+//                    order
+//            );
+//        }
+//        return orderRepository.save(order);
+//    }
+
+    @Transactional
+    public Order updateDeliveryDetails(
+            Long orderId,
+            UpdateDeliveryRequest request
+    ) {
+        Order order = orderRepository
+                .findById(orderId)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Order not found"
+                        )
+                );
+
+        Long previousDeliveryPersonId =
+                order.getDeliveryPersonId();
+
+        if (request.getTrackingNo() != null &&
+                !request.getTrackingNo().isBlank()) {
+
+            String trackingNo =
+                    request.getTrackingNo().trim();
+
+            orderRepository
+                    .findByTrackingNo(trackingNo)
+                    .filter(existingOrder ->
+                            !existingOrder.getId()
+                                    .equals(orderId)
+                    )
+                    .ifPresent(existingOrder -> {
+                        throw new ResponseStatusException(
+                                HttpStatus.CONFLICT,
+                                "Tracking number already exists"
+                        );
+                    });
+
+            order.setTrackingNo(trackingNo);
+        }
+
+        if (request.getDeliveryPersonId() != null) {
+            if (order.getTrackingNo() == null ||
+                    order.getTrackingNo().isBlank()) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Tracking number is required before assigning a driver"
+                );
+            }
+
+            if (order.getStatus() != OrderStatus.PACKED) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Only PACKED orders can be assigned to a driver"
+                );
+            }
+            order.setDeliveryPersonId(
+                    request.getDeliveryPersonId()
+            );
+        }
+
+        if (request.getStatus() != null) {
+            order.setStatus(request.getStatus());
+        }
+
+        Order savedOrder =
+                orderRepository.save(order);
+
+        if (request.getDeliveryPersonId() != null) {
+            System.out.println(
+                    "Sending notification to driver " +
+                            savedOrder.getDeliveryPersonId()
+            );
+
+            pushNotificationService.notifyJobAssigned(
+                    savedOrder
+            );
+        }
+//        boolean newlyAssigned =
+//                request.getDeliveryPersonId() != null &&
+//                        !request.getDeliveryPersonId()
+//                                .equals(previousDeliveryPersonId);
+//
+//        if (newlyAssigned) {
+//            pushNotificationService.notifyJobAssigned(
+//                    savedOrder
+//            );
+//        }
+
+        return savedOrder;
+    }
 }

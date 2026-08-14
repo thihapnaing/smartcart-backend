@@ -4,6 +4,7 @@ import nus.iss.smartcart.backend.admin.dto.AdminDashboardStatsDto;
 import nus.iss.smartcart.backend.admin.dto.AdminProductSummaryDto;
 import nus.iss.smartcart.backend.admin.dto.CategoryCountDto;
 import nus.iss.smartcart.backend.admin.dto.GenderCountDto;
+import nus.iss.smartcart.backend.dto.PublicStatsDto;
 import nus.iss.smartcart.backend.model.Gender;
 import nus.iss.smartcart.backend.model.Order;
 import nus.iss.smartcart.backend.model.OrderStatus;
@@ -101,6 +102,29 @@ public class AdminDashboardService {
                 .categoryBreakdown(categoryBreakdown)
                 .genderSplit(genderSplit)
                 .recentListings(recentListings)
+                .build();
+    }
+    
+    @Transactional
+    public PublicStatsDto getPublicStats() {
+        long activeListings = productRepository.findAll().stream()
+                .filter(p -> p.getStatus() == ProductStatus.ACTIVE)
+                .count();
+
+        long activeMerchants = userRepository.findAll().stream()
+                .filter(u -> u.getRole() == UserRole.MERCHANT)
+                .count();
+
+        BigDecimal totalRevenue = orderRepository.findAll().stream()
+                .filter(o -> REVENUE_COUNTING_STATUSES.contains(o.getStatus()))
+                .map(Order::getTotalAmount)
+                .filter(java.util.Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return PublicStatsDto.builder()
+                .activeListings(activeListings)
+                .activeMerchants(activeMerchants)
+                .totalRevenue(totalRevenue)
                 .build();
     }
 

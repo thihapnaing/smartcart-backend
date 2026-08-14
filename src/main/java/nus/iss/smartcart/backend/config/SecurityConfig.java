@@ -77,7 +77,8 @@ public class SecurityConfig {
                         // Product browsing
                         .requestMatchers(
                                 "/api/products/**",
-                                "/api/product/**"
+                                "/api/product/**",
+                                "/api/categories/**"
                         )
                         .permitAll()
 

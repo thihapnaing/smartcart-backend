@@ -9,7 +9,9 @@ import java.time.LocalDateTime;
 @Table(name = "payment")
 public class Payment {
 
-    public Payment() {}
+    public Payment() {
+        // Required by JPA - Hibernate instantiates entities via reflection when loading from the DB.
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

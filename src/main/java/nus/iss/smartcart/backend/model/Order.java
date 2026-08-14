@@ -1,7 +1,6 @@
 package nus.iss.smartcart.backend.model;
 
 import jakarta.persistence.*;
-import lombok.Builder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -12,7 +11,9 @@ import java.util.List;
 @Table (name = "orders")
 public class Order {
 
-    public Order() {}
+    public Order() {
+        // Required by JPA - Hibernate instantiates entities via reflection when loading from the DB.
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

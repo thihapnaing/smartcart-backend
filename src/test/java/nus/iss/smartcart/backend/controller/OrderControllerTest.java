@@ -24,6 +24,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -52,49 +54,44 @@ class OrderControllerTest {
     }
 
     @Test
-    void checkout_returnsCreatedWithOrderData() throws Exception {
-        CheckoutRequest request = new CheckoutRequest();
+    void checkout_returnsCreatedWithOrderList() throws Exception {
         DeliveryDetails deliveryDetails = DeliveryDetails.builder()
                 .firstName("John")
                 .lastName("Tan")
                 .shippingAddress("12 Rainbow Street")
                 .phoneNumber("91234567")
                 .build();
-        CheckoutResponse response = CheckoutResponse.builder()
+
+        CheckoutResponse orderForMerchantA = CheckoutResponse.builder()
                 .orderId(1L)
                 .cartItemDetails(List.of())
-                .totalAmount(BigDecimal.ZERO)
+                .totalAmount(BigDecimal.valueOf(50))
                 .orderStatus(OrderStatus.PAID)
                 .deliveryDetails(deliveryDetails)
                 .paymentMethod(PaymentMethod.CREDIT_CARD)
                 .build();
-        when(orderService.checkout(2L,request)).thenReturn(response);
+
+        CheckoutResponse orderForMerchantB = CheckoutResponse.builder()
+                .orderId(2L)
+                .cartItemDetails(List.of())
+                .totalAmount(BigDecimal.valueOf(30))
+                .orderStatus(OrderStatus.PAID)
+                .deliveryDetails(deliveryDetails)
+                .paymentMethod(PaymentMethod.CREDIT_CARD)
+                .build();
+
+        CheckoutRequest request = new CheckoutRequest();
+
+        when(orderService.checkout(eq(2L), any())).thenReturn(List.of(orderForMerchantA, orderForMerchantB));
+
         mockMvc.perform(post("/api/orders/checkout")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))
                 )
-                .andExpect(status().isCreated());
-    }
-
-    @Test
-    void getOrderDetail_returnsOKWithOrderData() throws Exception {
-        DeliveryDetails deliveryDetails = DeliveryDetails.builder()
-                .firstName("John")
-                .lastName("Tan")
-                .shippingAddress("12 Rainbow Street")
-                .phoneNumber("91234567")
-                .build();
-        CheckoutResponse response = CheckoutResponse.builder()
-                .orderId(1L)
-                .cartItemDetails(List.of())
-                .totalAmount(BigDecimal.ZERO)
-                .orderStatus(OrderStatus.PAID)
-                .deliveryDetails(deliveryDetails)
-                .paymentMethod(PaymentMethod.CREDIT_CARD)
-                .build();
-        when(orderService.getOrderDetail(1L, 2L)).thenReturn(response);
-        mockMvc.perform(get("/api/orders/1"))
-                .andExpect(status().isOk());
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(2)))
+                .andExpect(jsonPath("$[0].orderId").value(1L))
+                .andExpect(jsonPath("$[1].orderId").value(2L));
     }
 
     @Test

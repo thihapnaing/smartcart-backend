@@ -36,6 +36,31 @@ CREATE TABLE IF NOT EXISTS smartcart_user_profile (
     PRIMARY KEY (id)
 );
 
+CREATE TABLE IF NOT EXISTS smartcart_merchant (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL UNIQUE,
+    business_name VARCHAR(150) NOT NULL,
+    uen VARCHAR(50) NOT NULL UNIQUE,
+    business_type VARCHAR(100),
+    business_address VARCHAR(255),
+    postal_code VARCHAR(20),
+    contact_number VARCHAR(30),
+    product_category VARCHAR(100),
+    business_description TEXT,
+    logo_url VARCHAR(500),
+    registration_document_url VARCHAR(500),
+    pickup_available BOOLEAN NOT NULL DEFAULT FALSE,
+    verification_status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_merchant_profile_user
+        FOREIGN KEY (user_id)
+            REFERENCES smartcart_user(id)
+            ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS product (
     id BIGINT NOT NULL,
     name VARCHAR(255),

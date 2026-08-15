@@ -6,7 +6,9 @@ import jakarta.persistence.*;
 @Table(name = "category")
 public class Category {
 
-    public Category() {}
+    public Category() {
+        // Required by JPA - Hibernate instantiates entities via reflection when loading from the DB.
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

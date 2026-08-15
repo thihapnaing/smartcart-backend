@@ -64,9 +64,11 @@ public class ToolDataService {
             .map(o -> {
                 Map<String, Object> m = new LinkedHashMap<>();
                 m.put("orderId", o.getId());
+                m.put("orderNumber", orderNumber(o));
                 m.put("totalAmount", o.getTotalAmount());
                 m.put("status", o.getStatus() != null ? o.getStatus().name() : null);
                 m.put("orderDate", o.getOrderDate() != null ? o.getOrderDate().toString() : null);
+                m.put("items", orderItemSummaries(o));
                 return m;
             })
             .toList();
@@ -78,6 +80,32 @@ public class ToolDataService {
         result.put("orderCount", orders.size());
         result.put("recentOrders", recentOrders);
         return result;
+    }
+
+    /** Falls back to a zero-padded "SC-######" code when there's no real trackingNo yet
+     * (e.g. an order that hasn't shipped) - the order card always needs something to show. */
+    private String orderNumber(Order o) {
+        String trackingNo = o.getTrackingNo();
+        if (trackingNo != null && !trackingNo.isBlank()) {
+            return trackingNo;
+        }
+        return o.getId() != null ? String.format("SC-%06d", o.getId()) : null;
+    }
+
+    private List<Map<String, Object>> orderItemSummaries(Order o) {
+        return o.getItems().stream()
+            .map(item -> {
+                Map<String, Object> m = new LinkedHashMap<>();
+                var variant = item.getProductVariant();
+                var product = variant != null ? variant.getProduct() : null;
+                m.put("name", product != null ? product.getName() : null);
+                m.put("price", item.getUnitPrice());
+                m.put("imageUrl", product != null ? product.getImageUrl() : null);
+                m.put("quantity", item.getQuantity());
+                m.put("productVariantId", variant != null ? variant.getId() : null);
+                return m;
+            })
+            .toList();
     }
 
     /**

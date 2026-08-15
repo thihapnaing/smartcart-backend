@@ -8,7 +8,7 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-smartcart_db}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
       MYSQL_USER: ${MYSQL_USER:-smartcart_user}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-smartcart_password}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-smart-cart_password}
       TZ: 'Asia/Singapore'
     ports:
       - "3306:3306"
@@ -43,8 +43,9 @@ services:
       # the backend reaches its dependencies via their compose service names.
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/${MYSQL_DATABASE:-smartcart_db}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-smartcart_user}
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-smartcart_password}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-smart-cart_password}
       AI_PYTHON_SERVICE_BASE_URL: http://smartcart-ai-service:8001
+      JWT_SECRET: ${JWT_SECRET:-SmartCartSmartCartSmartCartSecretKey2026ForJWTAuthentication123456}
     ports:
       - "8080:8080"
     depends_on:

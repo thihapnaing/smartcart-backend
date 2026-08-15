@@ -1,15 +1,17 @@
 package nus.iss.smartcart.backend.model;
 
 import jakarta.persistence.*;
-import org.springframework.cglib.core.Local;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 @Entity
 @Table(name = "payment")
 public class Payment {
 
-    public Payment() {}
+    public Payment() {
+        // Required by JPA - Hibernate instantiates entities via reflection when loading from the DB.
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,7 +29,7 @@ public class Payment {
     private LocalDateTime paidAt;
 
     protected void onCreate() {
-        this.paidAt = LocalDateTime.now();
+        this.paidAt = LocalDateTime.now(ZoneId.of("Asia/Singapore"));
     }
 
     //Getters and Setters

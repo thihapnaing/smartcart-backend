@@ -1,10 +1,10 @@
 package nus.iss.smartcart.backend.model;
 
 import jakarta.persistence.*;
-import lombok.Builder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,7 +12,9 @@ import java.util.List;
 @Table (name = "orders")
 public class Order {
 
-    public Order() {}
+    public Order() {
+        // Required by JPA - Hibernate instantiates entities via reflection when loading from the DB.
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -45,7 +47,7 @@ public class Order {
 
     @PrePersist
     protected void onCreate() {
-        this.orderDate = LocalDateTime.now();
+        this.orderDate = LocalDateTime.now(ZoneId.of("Asia/Singapore"));
     }
 
     @Column(name = "tracking_no", unique = true)

@@ -5,6 +5,9 @@ package nus.iss.smartcart.backend.admin.controller;
 import nus.iss.smartcart.backend.admin.dto.AdminProductSummaryDto;
 import nus.iss.smartcart.backend.admin.service.AdminProductService;
 import nus.iss.smartcart.backend.model.ProductStatus;
+import nus.iss.smartcart.backend.repository.UserRepository;
+import nus.iss.smartcart.backend.security.CustomUserDetailsService;
+import nus.iss.smartcart.backend.security.JwtService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -32,6 +35,9 @@ class AdminProductControllerTest {
     @Autowired private MockMvc mockMvc;
 
     @MockitoBean private AdminProductService adminProductService;
+    @MockitoBean private JwtService jwtService;
+    @MockitoBean private CustomUserDetailsService customUserDetailsService;
+    @MockitoBean private UserRepository userRepository;
 
     private AdminProductSummaryDto sampleDto(Long id, String status) {
         return AdminProductSummaryDto.builder()

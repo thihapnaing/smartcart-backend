@@ -4,13 +4,14 @@ import jakarta.persistence.*;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @Entity
 @Table(name = "cart")
 public class Cart {
 
-    public Cart() {}
+    public Cart() {
+        // Required by JPA - Hibernate instantiates entities via reflection when loading from the DB.
+    }
 
     public Cart(User user) {
         this.user = user;

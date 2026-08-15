@@ -1,9 +1,23 @@
 package nus.iss.smartcart.backend.security;
 
+import nus.iss.smartcart.backend.exception.ForbiddenException;
 import nus.iss.smartcart.backend.model.User;
+import nus.iss.smartcart.backend.model.UserRole;
 import nus.iss.smartcart.backend.repository.UserRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
+// AUTHOR: Htet Nandar(Grace)
+/**
+ * Resolves the caller's User entity.
+ *
+ * All three - getCurrentAdmin(), getCurrentMerchant(), getCurrentCustomer() - read the real
+ * JwtAuthenticationFilter SecurityContext and enforce the matching role, throwing
+ * ForbiddenException if no one is authenticated or the authenticated account has a different
+ * role. Customer/merchant login shares one endpoint (POST /api/auth/login) with admin - see
+ * AuthController/AuthService - so the same real-auth path works for all three roles.
+ */
 @Component
 public class CurrentUserProvider {
     private final UserRepository userRepository;
@@ -11,27 +25,38 @@ public class CurrentUserProvider {
     public CurrentUserProvider(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
-   // once JWT auth is implemented, replace with SecurityContextHolder lookup, and verify the token's role is MERCHANT.
+
     public User getCurrentMerchant() {
-        return userRepository.findById(1L)
-                .orElseThrow(() -> new IllegalStateException(
-                        "Seed data missing: expected merchant id=1 (smartcart_offical)"
-                ));
-    }
-    // once JWT auth is implemented, replace with SecurityContextHolder lookup, and verify the token's role is CUSTOMER.
-    public User getCurrentCustomer() {
-        return userRepository.findById(2L)
-                .orElseThrow(() -> new IllegalStateException(
-                        "Seed data missing: expected customer id=2 (grace)"
-                ));
+        return getCurrentUserWithRole(UserRole.MERCHANT);
     }
 
-    // AUTHOR: Htet Nandar(Grace)
-    // once JWT auth is implemented, replace with SecurityContextHolder lookup, and verify the token's role is ADMIN.
+    public User getCurrentCustomer() {
+        return getCurrentUserWithRole(UserRole.CUSTOMER);
+    }
+
     public User getCurrentAdmin() {
-        return userRepository.findById(4L)
-                .orElseThrow(() -> new IllegalStateException(
-                        "Seed data missing: expected admin id=4 (admin)"
-                ));
+        return getCurrentUserWithRole(UserRole.ADMIN);
+    }
+
+    private User getCurrentUserWithRole(UserRole expectedRole) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new ForbiddenException("Not authenticated.");
+        }
+
+        // JwtAuthenticationFilter authenticates with a UserDetails whose username is the
+        // account's email (see CustomUserDetailsService.loadUserByUsername) - Authentication's
+        // getName() resolves to that username for a UserDetails principal.
+        String email = authentication.getName();
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ForbiddenException("Authenticated user no longer exists."));
+
+        if (user.getRole() != expectedRole) {
+            throw new ForbiddenException("This action requires a " + expectedRole + " account.");
+        }
+
+        return user;
     }
 }

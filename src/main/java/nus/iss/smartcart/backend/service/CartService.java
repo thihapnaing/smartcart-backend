@@ -139,6 +139,7 @@ public class CartService {
                 .subtotal(subTotal)
                 .gender(item.getProductVariant().getProduct().getGender().name())
                 .categoryName(item.getProductVariant().getProduct().getCategory().getName())
+                .shopName(item.getProductVariant().getProduct().getShopName())
                 .build();
     }
 

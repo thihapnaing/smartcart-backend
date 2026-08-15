@@ -9,7 +9,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderService {
@@ -35,7 +38,7 @@ public class OrderService {
     }
 
     @Transactional
-    public CheckoutResponse checkout(Long userId, CheckoutRequest checkoutRequest) {
+    public List<CheckoutResponse> checkout(Long userId, CheckoutRequest checkoutRequest) {
         Cart cart = cartRepository.findByUserId(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Cart not found"));
         List<CartItem> cartItems = cartItemRepository.findByCartId(cart.getId());
@@ -45,12 +48,21 @@ public class OrderService {
         validateStock(cartItems);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
-        BigDecimal totalAmount = calculateTotal(cartItems);
-        Order order  = createOrder(user, checkoutRequest, totalAmount);
-        addOrderItems(cartItems, order);
+
+        Map<User, List<CartItem>> itemsByMerchant = cartItems.stream()
+                .collect(Collectors.groupingBy(ci -> ci.getProductVariant().getProduct().getMerchant()));
+
+        List<CheckoutResponse> responses = new ArrayList<>();
+        for (List<CartItem> merchantItems : itemsByMerchant.values()) {
+            BigDecimal totalAmount = calculateTotal(merchantItems);
+            Order order = createOrder(user, checkoutRequest, totalAmount);
+            addOrderItems(merchantItems, order);
+            createPayment(order, checkoutRequest.getPaymentMethod());
+            responses.add(buildCheckOutResponse(order, checkoutRequest));
+        }
+
         clearCart(cart);
-        createPayment(order, checkoutRequest.getPaymentMethod());
-        return buildCheckOutResponse(order, checkoutRequest);
+        return responses;
     }
 
     @Transactional(readOnly = true)
@@ -91,6 +103,30 @@ public class OrderService {
                 .toList();
     }
 
+    @Transactional
+    public UpdateOrderStatusResponse updateOrderStatus(Long orderId, OrderStatus newStatus) {
+        User merchant = currentUserProvider.getCurrentMerchant();
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+
+        // Make sure this order actually contains a product belonging to the
+        // merchant making the request, so one merchant cannot update another
+        // merchant's orders.
+        List<OrderItem> orderItems = orderItemRepository.findByOrderId(orderId);
+        boolean belongsToMerchant = orderItems.stream()
+                .anyMatch(item -> item.getProductVariant().getProduct().getMerchant().getId().equals(merchant.getId()));
+
+        if (!belongsToMerchant) {
+            throw new EntityNotFoundException("Order not found");
+        }
+
+        order.setStatus(newStatus);
+        orderRepository.save(order);
+
+        return new UpdateOrderStatusResponse(order.getId(), order.getStatus().name());
+    }
+
     private CheckoutResponse buildCheckOutResponse(Order order, CheckoutRequest checkoutRequest) {
         List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
         List<CartItemDetail> cartItemDetails = orderItems
@@ -126,6 +162,7 @@ public class OrderService {
                 .subtotal(orderItem.getUnitPrice().multiply(BigDecimal.valueOf(orderItem.getQuantity())))
                 .gender(orderItem.getProductVariant().getProduct().getGender().name())
                 .categoryName(orderItem.getProductVariant().getProduct().getCategory().getName())
+                .shopName(orderItem.getProductVariant().getProduct().getShopName())
                 .build();
     }
 

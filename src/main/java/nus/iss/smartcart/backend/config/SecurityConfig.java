@@ -95,19 +95,18 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**")
                         .hasRole("ADMIN")
 
+
                         // Customer facing endpoints. There's no login UI for these
                         .requestMatchers(
-                                "/api/cart/**",
+                        		"/api/cart/**",
                                 "/api/chat/**",
                                 "/api/orders/**",
                                 "/api/user-profile/**",
-                                "/api/v1/recommendations/**",
                                 "/api/v1/products/**",
                                 "/api/home/**"
                         )
                         .permitAll()
-                        
-                                           
+                                                            
                         // Everything else requires authentication
                         .anyRequest()
                         .authenticated()

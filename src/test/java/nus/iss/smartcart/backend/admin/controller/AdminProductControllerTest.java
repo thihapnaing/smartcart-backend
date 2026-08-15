@@ -2,6 +2,7 @@ package nus.iss.smartcart.backend.admin.controller;
 
 // AUTHOR: Htet Nandar(Grace)
 
+import jakarta.persistence.EntityNotFoundException;
 import nus.iss.smartcart.backend.admin.dto.AdminProductSummaryDto;
 import nus.iss.smartcart.backend.admin.service.AdminProductService;
 import nus.iss.smartcart.backend.model.ProductStatus;
@@ -90,5 +91,16 @@ class AdminProductControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"NOT_A_REAL_STATUS\"}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void updateProductStatus_notFound_returns404() throws Exception {
+        when(adminProductService.updateProductStatus(99L, ProductStatus.INACTIVE))
+                .thenThrow(new EntityNotFoundException("Product not found: 99"));
+
+        mockMvc.perform(patch("/api/admin/products/99/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"INACTIVE\"}"))
+                .andExpect(status().isNotFound());
     }
 }

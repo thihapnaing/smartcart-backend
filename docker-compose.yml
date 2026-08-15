@@ -45,6 +45,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-smartcart_user}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-smart-cart_password}
       AI_PYTHON_SERVICE_BASE_URL: http://smartcart-ai-service:8001
+      JWT_SECRET: ${JWT_SECRET:-SmartCartSmartCartSmartCartSecretKey2026ForJWTAuthentication123456}
     ports:
       - "8080:8080"
     depends_on:

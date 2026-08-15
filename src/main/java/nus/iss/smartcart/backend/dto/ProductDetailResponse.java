@@ -20,5 +20,6 @@ public class ProductDetailResponse {
     private String categoryName;
     private String shopName;
     private String status;
+    private String color;
     private List<ProductVariantDetail> variants;
 }

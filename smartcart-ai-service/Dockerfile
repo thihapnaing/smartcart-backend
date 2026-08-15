@@ -32,8 +32,11 @@ RUN pip install --no-cache-dir --upgrade pip \
 FROM python:3.12-slim AS runtime
 WORKDIR /app
 
-# libgl1/libglib2.0-0 are required by opencv-python at import time
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# libgl1/libglib2.0-0 are required by opencv-python at import time.
+# apt-get upgrade picks up Debian security patches released after this
+# base image was built (e.g. the util-linux/libblkid family - CVE-2026-53615)
+# that Trivy's own DB can lag behind reporting as fixed.
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
         libgl1 \
         libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/* \

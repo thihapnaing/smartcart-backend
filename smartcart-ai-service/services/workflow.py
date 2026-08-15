@@ -102,6 +102,60 @@ def _extract_based_on(tool_result_text: str) -> Optional[str]:
     return None
 
 
+def _reply_promises_order_cards(reply: Optional[str]) -> bool:
+    """The prompt tells the model to answer order-tracking questions with a short line like
+    "Here's what I found!" or "You've got 2 recent orders - check them out below" and rely on
+    the app to render order cards underneath. Conversation history is plain text, so on a
+    follow-up turn ("wherer", "I want to know my latest order") the model sometimes writes that
+    same canned reply from memory without actually re-invoking get_order_history THIS turn -
+    there's no structured data behind it, and no card renders.
+
+    "Here's what I found!" alone (no "order" mention) is one of only two example replies the
+    prompt gives for get_order_history, so it's checked as a standalone signal, not just
+    "order" + below/check-them-out - an earlier version of this check missed exactly this
+    phrasing. Curly apostrophes (the model often writes '’' rather than a plain "'") are
+    normalized first so the match isn't accidentally case-sensitive to punctuation style."""
+    if not reply:
+        return False
+    text = reply.lower().replace("’", "'").replace("‘", "'")
+    if "here's what i found" in text:
+        return True
+    return "order" in text and ("below" in text or "check them out" in text)
+
+
+async def _ensure_orders_if_promised(
+    reply: Optional[str],
+    products: Optional[list],
+    orders: Optional[list],
+    based_on: Optional[str],
+    user_id: Optional[int],
+    tool_registry: dict,
+) -> tuple[Optional[list], Optional[str]]:
+    """Safety net for the failure mode _reply_promises_order_cards() describes: if nothing was
+    fetched this turn (no products either - that path already renders its own cards and orders
+    would be intentionally suppressed by _visible_orders) but the reply promises order cards
+    anyway, fetch get_order_history directly - once, deterministically - rather than let the
+    promise silently go unfulfilled. Leaves the reply text untouched; it already reads fine."""
+    if products is not None or orders is not None or user_id is None:
+        return orders, based_on
+    if not _reply_promises_order_cards(reply):
+        return orders, based_on
+
+    tool = tool_registry.get("get_order_history")
+    if tool is None:
+        return orders, based_on
+
+    try:
+        print(f"[Workflow] Reply promised order cards but none were fetched this turn - "
+              f"calling get_order_history({user_id}) as a fallback.")
+        raw_result = await tool.ainvoke({"user_id": user_id})
+        tool_result = _tool_result_to_text(raw_result)
+    except Exception:
+        return orders, based_on
+
+    return _extract_orders(tool_result) or orders, _extract_based_on(tool_result) or based_on
+
+
 async def _call_tool(tc, tool_registry: dict) -> tuple[str, str, str]:
     """Runs a single tool call and returns (tool_call_id, function_name, result_text).
     Errors are caught per-call so one failing/slow tool doesn't take down the others
@@ -137,6 +191,7 @@ async def _run_agent(state: SmartCartState, client: AsyncOpenAI, model: str, ope
         messages.append(msg if isinstance(msg, dict) else {"role": msg.role, "content": msg.content})
     messages.append({"role": "user", "content": state["message"]})
 
+    user_id = state.get("user_id")
     products = None
     orders = None
     based_on = None
@@ -158,6 +213,9 @@ async def _run_agent(state: SmartCartState, client: AsyncOpenAI, model: str, ope
         assistant_msg = response.choices[0].message
 
         if not assistant_msg.tool_calls:
+            orders, based_on = await _ensure_orders_if_promised(
+                assistant_msg.content, products, orders, based_on, user_id, tool_registry,
+            )
             return {
                 "reply": assistant_msg.content, "products": products,
                 "orders": _visible_orders(products, orders), "based_on": based_on,
@@ -195,6 +253,9 @@ async def _run_agent(state: SmartCartState, client: AsyncOpenAI, model: str, ope
 
     messages.append({"role": "user", "content": "Please give your final answer based on what you've found."})
     fallback = await client.chat.completions.create(model=model, messages=messages, temperature=0.7, max_tokens=200)
+    orders, based_on = await _ensure_orders_if_promised(
+        fallback.choices[0].message.content, products, orders, based_on, user_id, tool_registry,
+    )
     return {
         "reply": fallback.choices[0].message.content, "products": products,
         "orders": _visible_orders(products, orders), "based_on": based_on,

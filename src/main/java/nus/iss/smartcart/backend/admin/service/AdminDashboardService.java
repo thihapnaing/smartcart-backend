@@ -11,6 +11,7 @@ import nus.iss.smartcart.backend.model.OrderStatus;
 import nus.iss.smartcart.backend.model.Product;
 import nus.iss.smartcart.backend.model.ProductStatus;
 import nus.iss.smartcart.backend.model.UserRole;
+import nus.iss.smartcart.backend.model.UserStatus;
 import nus.iss.smartcart.backend.repository.OrderRepository;
 import nus.iss.smartcart.backend.repository.ProductRepository;
 import nus.iss.smartcart.backend.repository.UserRepository;
@@ -72,8 +73,11 @@ public class AdminDashboardService {
                 .filter(java.util.Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        // Only ACTIVE ones - a merchant account can also be SUSPENDED (see AdminMerchantService),
+        // and counting every role=MERCHANT row here would overstate this tile with accounts
+        // that can't actually operate a storefront right now.
         long activeMerchants = userRepository.findAll().stream()
-                .filter(u -> u.getRole() == UserRole.MERCHANT)
+                .filter(u -> u.getRole() == UserRole.MERCHANT && u.getStatus() == UserStatus.ACTIVE)
                 .count();
 
         List<CategoryCountDto> categoryBreakdown = products.stream()
@@ -111,8 +115,11 @@ public class AdminDashboardService {
                 .filter(p -> p.getStatus() == ProductStatus.ACTIVE)
                 .count();
 
+        // Only ACTIVE ones - a merchant account can also be SUSPENDED (see AdminMerchantService),
+        // and counting every role=MERCHANT row here would overstate this tile with accounts
+        // that can't actually operate a storefront right now.
         long activeMerchants = userRepository.findAll().stream()
-                .filter(u -> u.getRole() == UserRole.MERCHANT)
+                .filter(u -> u.getRole() == UserRole.MERCHANT && u.getStatus() == UserStatus.ACTIVE)
                 .count();
 
         BigDecimal totalRevenue = orderRepository.findAll().stream()
@@ -158,6 +165,7 @@ public class AdminDashboardService {
                 .gender(product.getGender() != null ? product.getGender().name() : null)
                 .status(product.getStatus() != null ? product.getStatus().name() : null)
                 .createdAt(product.getCreatedAt())
+                .merchantId(product.getMerchant() != null ? product.getMerchant().getId() : null)
                 .build();
     }
 }

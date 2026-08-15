@@ -14,6 +14,7 @@ import nus.iss.smartcart.backend.model.Product;
 import nus.iss.smartcart.backend.model.ProductStatus;
 import nus.iss.smartcart.backend.model.User;
 import nus.iss.smartcart.backend.model.UserRole;
+import nus.iss.smartcart.backend.model.UserStatus;
 import nus.iss.smartcart.backend.repository.OrderRepository;
 import nus.iss.smartcart.backend.repository.ProductRepository;
 import nus.iss.smartcart.backend.repository.UserRepository;
@@ -143,20 +144,28 @@ class AdminDashboardServiceTest {
     }
 
     @Test
-    void getStats_activeMerchants_countsOnlyMerchantRoleUsers() {
+    void getStats_activeMerchants_countsOnlyActiveMerchantRoleUsers() {
         when(productRepository.findAll()).thenReturn(List.of());
         when(orderRepository.findAll()).thenReturn(List.of());
 
         User merchant1 = mock(User.class);
         when(merchant1.getRole()).thenReturn(UserRole.MERCHANT);
+        when(merchant1.getStatus()).thenReturn(UserStatus.ACTIVE);
         User merchant2 = mock(User.class);
         when(merchant2.getRole()).thenReturn(UserRole.MERCHANT);
+        when(merchant2.getStatus()).thenReturn(UserStatus.ACTIVE);
+        // A suspended account still counts as MERCHANT-role but must NOT count as active -
+        // see AdminMerchantService for the ACTIVE <-> SUSPENDED lifecycle.
+        User suspendedMerchant = mock(User.class);
+        when(suspendedMerchant.getRole()).thenReturn(UserRole.MERCHANT);
+        when(suspendedMerchant.getStatus()).thenReturn(UserStatus.SUSPENDED);
         User customer = mock(User.class);
         when(customer.getRole()).thenReturn(UserRole.CUSTOMER);
         User admin = mock(User.class);
         when(admin.getRole()).thenReturn(UserRole.ADMIN);
 
-        when(userRepository.findAll()).thenReturn(List.of(merchant1, merchant2, customer, admin));
+        when(userRepository.findAll())
+                .thenReturn(List.of(merchant1, merchant2, suspendedMerchant, customer, admin));
 
         AdminDashboardStatsDto stats = adminDashboardService.getStats();
 
@@ -269,16 +278,20 @@ class AdminDashboardServiceTest {
     }
 
     @Test
-    void getPublicStats_countsMerchantRoleUsersOnly() {
+    void getPublicStats_countsActiveMerchantRoleUsersOnly() {
         when(productRepository.findAll()).thenReturn(List.of());
         when(orderRepository.findAll()).thenReturn(List.of());
 
         User merchant = mock(User.class);
         when(merchant.getRole()).thenReturn(UserRole.MERCHANT);
+        when(merchant.getStatus()).thenReturn(UserStatus.ACTIVE);
+        User suspendedMerchant = mock(User.class);
+        when(suspendedMerchant.getRole()).thenReturn(UserRole.MERCHANT);
+        when(suspendedMerchant.getStatus()).thenReturn(UserStatus.SUSPENDED);
         User customer = mock(User.class);
         when(customer.getRole()).thenReturn(UserRole.CUSTOMER);
 
-        when(userRepository.findAll()).thenReturn(List.of(merchant, customer));
+        when(userRepository.findAll()).thenReturn(List.of(merchant, suspendedMerchant, customer));
 
         PublicStatsDto stats = adminDashboardService.getPublicStats();
 

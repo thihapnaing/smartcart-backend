@@ -43,11 +43,5 @@ public class RecommendationController {
         // Pass the securely retrieved ID to your existing service logic
         return ResponseEntity.ok(recommendationService.getRecommendationsForUser(user.getId()));
     }
-
-    /*
-    // Update the ResponseEntity generic type
-    @GetMapping("/{userId}")
-    public ResponseEntity<RecommendationResultDTO> getRecommendations(@PathVariable Long userId) {
-        return ResponseEntity.ok(recommendationService.getRecommendationsForUser(userId));
-    } */
+    
 }

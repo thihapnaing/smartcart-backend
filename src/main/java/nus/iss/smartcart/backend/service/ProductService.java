@@ -148,7 +148,7 @@ public class ProductService {
     }
 
     private void checkIfLockedByAdmin(Product product) {
-        if (product.getAdminLocked()) {
+        if (Boolean.TRUE.equals(product.getAdminLocked())) {
             throw new ForbiddenException("Product is locked by admin");
         }
     }

@@ -23,4 +23,5 @@ public class AdminProductSummaryDto {
     private String gender;
     private String status;
     private LocalDateTime createdAt;
+    private Long merchantId;
 }

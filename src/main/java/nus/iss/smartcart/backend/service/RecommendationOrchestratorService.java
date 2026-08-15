@@ -1,5 +1,7 @@
 package nus.iss.smartcart.backend.service;
 
+// Author - Cecil
+
 import nus.iss.smartcart.backend.dto.CustomerProfileDTO;
 import nus.iss.smartcart.backend.dto.RecommendationRequestDTO;
 import nus.iss.smartcart.backend.dto.RecommendationResponseDTO;
@@ -7,6 +9,7 @@ import nus.iss.smartcart.backend.dto.RecommendedProductResponseDTO;
 import nus.iss.smartcart.backend.dto.RecommendationResultDTO;
 
 import nus.iss.smartcart.backend.model.Product;
+import nus.iss.smartcart.backend.model.ProductStatus;
 import nus.iss.smartcart.backend.model.UserProfile;
 import nus.iss.smartcart.backend.repository.CartRepository;
 import nus.iss.smartcart.backend.repository.OrderRepository;
@@ -31,7 +34,7 @@ public class RecommendationOrchestratorService {
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     
-    // 1. Replaced RestClient with RestTemplate
+    // Replaced RestClient with RestTemplate
     private final RestTemplate restTemplate;
 
     public RecommendationOrchestratorService(UserProfileRepository userProfileRepository,
@@ -43,7 +46,7 @@ public class RecommendationOrchestratorService {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         
-        // 2. Initialize RestTemplate
+        // Initialize RestTemplate
         this.restTemplate = new RestTemplate();
     }
 
@@ -97,7 +100,13 @@ public class RecommendationOrchestratorService {
                     .map(rec -> {
                         Long id = Long.parseLong(rec.getProductId());
                         Product product = productMap.get(id);
-                        if (product == null) return null;
+                        
+                        // --- THE GATEKEEPER ---
+                        // Drop the product if it doesn't exist OR if it is deactivated
+                        if (product == null || product.getStatus() != ProductStatus.ACTIVE) {
+                            return null;
+                        }
+                        
                         return new RecommendedProductResponseDTO(
                                 product.getId(),
                                 product.getName(),
@@ -108,10 +117,10 @@ public class RecommendationOrchestratorService {
                                 rec.getScore()
                         );
                     })
-                    .filter(java.util.Objects::nonNull)
+                    .filter(java.util.Objects::nonNull) // This automatically cleans up the nulls!
                     .toList();
 
-            // 2. Return the combined object containing the summary and the products
+            // Return the combined object containing the summary and the products
             return new RecommendationResultDTO(aiResponse.getAgentSummary(), recommendedProducts);
 
         } catch (Exception e) {
@@ -123,6 +132,7 @@ public class RecommendationOrchestratorService {
 
     private List<RecommendedProductResponseDTO> getFallbackProducts() {
         return productRepository.findAll().stream()
+                .filter(p -> p.getStatus() == ProductStatus.ACTIVE) // <-- Added Gatekeeper filter
                 .limit(5)
                 .map(p -> new RecommendedProductResponseDTO(
                         p.getId(),

@@ -9,6 +9,8 @@ from services.agent_service import AgentService
 
 from services.vector_store import ProductCatalog
 from routers import chat as chat_router, recommendation_router
+from routers.trend_router import trend_router
+from routers.promotions_router import promotions_router
 
 from routers import chat as chat_router
 
@@ -31,6 +33,7 @@ async def lifespan(_app: FastAPI):
 
     chat_router.agent_service = agent          # inject into routers
     recommendation_router.agent_service = agent  # inject into routers
+    #trend_router.agent_service = agent 
 
 
     cnn_service.load()                          # load CNN
@@ -45,7 +48,7 @@ async def lifespan(_app: FastAPI):
     try:
         print("[Startup] Syncing product catalog with ChromaDB...")
         #catalog = ProductCatalog()
-        #catalog.reindex()
+        catalog.reindex()
     except Exception as e:
         print(f"[Startup Warning] Could not sync ChromaDB: {e}")
     # --------------------------------------------------------
@@ -59,6 +62,8 @@ app = FastAPI(title="SmartCart AI Service", lifespan=lifespan)
 app.include_router(chat_router.router)
 
 app.include_router(recommendation_router.router)
+app.include_router(trend_router)
+app.include_router(promotions_router)
 
 app.include_router(image_router.router)
 

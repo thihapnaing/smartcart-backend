@@ -120,10 +120,42 @@ public class AuthService {
         }
 
         if (request.getPassword() == null ||
-                request.getPassword().length() < 6) {
+                request.getPassword().isBlank()) {
+
+            throw new IllegalArgumentException(
+                    "Password is required"
+            );
+        }
+
+
+        if (request.getPassword().length() < 6) {
 
             throw new IllegalArgumentException(
                     "Password must be at least 6 characters"
+            );
+        }
+
+
+        if (!request.getPassword().matches(".*[A-Z].*")) {
+
+            throw new IllegalArgumentException(
+                    "Password must contain at least one uppercase letter"
+            );
+        }
+
+
+        if (!request.getPassword().matches(".*[a-z].*")) {
+
+            throw new IllegalArgumentException(
+                    "Password must contain at least one lowercase letter"
+            );
+        }
+
+
+        if (!request.getPassword().matches(".*[0-9].*")) {
+
+            throw new IllegalArgumentException(
+                    "Password must contain at least one number"
             );
         }
 

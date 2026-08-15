@@ -45,7 +45,12 @@ jobs:
           format: sarif
           output: trivy-backend-results.sarif
           severity: CRITICAL,HIGH
+          # Without this, trivy-action silently discards the severity filter
+          # above for SARIF output and scans/fails on ALL severities instead
+          # (see aquasecurity/trivy-action's entrypoint.sh SARIF handling).
+          limit-severities-for-sarif: 'true'
           exit-code: '1' # Fail the job if any CRITICAL/HIGH finding isn't already fixed
+          trivyignores: .trivyignore # Skip findings already triaged and accepted
 
       - name: Upload results to GitHub Security tab
         if: always() # Upload even if the scan step above failed the job
@@ -75,6 +80,10 @@ jobs:
           format: sarif
           output: trivy-ai-service-results.sarif
           severity: CRITICAL,HIGH
+          # Without this, trivy-action silently discards the severity filter
+          # above for SARIF output and scans/fails on ALL severities instead
+          # (see aquasecurity/trivy-action's entrypoint.sh SARIF handling).
+          limit-severities-for-sarif: 'true'
           exit-code: '1'
           trivyignores: smartcart-ai-service/.trivyignore # Skip findings already triaged and accepted
 

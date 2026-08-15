@@ -35,8 +35,9 @@ jobs:
         run: docker build -t smartcart-backend-backend:${{ github.sha }} .
 
       - name: Scan backend image with Trivy
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
+          scan type: 'image'
           image-ref: smartcart-backend-backend:${{ github.sha }}
           format: sarif
           output: trivy-backend-results.sarif
@@ -61,8 +62,9 @@ jobs:
         run: docker build -t smartcart-ai-service:${{ github.sha }} ./smartcart-ai-service
 
       - name: Scan AI service image with Trivy
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
+          scan-type: 'image'
           image-ref: smartcart-ai-service:${{ github.sha }}
           format: sarif
           output: trivy-ai-service-results.sarif

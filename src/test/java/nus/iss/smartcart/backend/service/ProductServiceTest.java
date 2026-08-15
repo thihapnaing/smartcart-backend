@@ -427,6 +427,25 @@ class ProductServiceTest {
     }
 
     @Test
+    void activateProduct_productLockedByAdmin_throwsForbiddenException() {
+        Product product = mock(Product.class);
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+
+        User merchant = mock(User.class);
+        when(product.getMerchant()).thenReturn(merchant);
+        when(merchant.getId()).thenReturn(1L);
+
+        when(currentUserProvider.getCurrentMerchant()).thenReturn(merchant);
+        when(merchant.getId()).thenReturn(1L);
+
+        when(product.getAdminLocked()).thenReturn(true);
+        assertThrows(ForbiddenException.class, () -> productService.activateProduct(1L));
+
+        verify(product, never()).setStatus(ProductStatus.ACTIVE);
+        verify(productRepository, never()).save(product);
+    }
+
+    @Test
     void activateProduct_wrongMerchant_throwsForbiddenException() {
         Product product = mock(Product.class);
         when(productRepository.findById(1L)).thenReturn(Optional.of(product));

@@ -60,6 +60,7 @@ class RecommendationOrchestratorServiceTest {
         product.setCategory(category);
         product.setPrice(new BigDecimal("39.90"));
         product.setImageUrl("/assets/products/linen-shirt.jpg");
+        product.setStatus(ProductStatus.ACTIVE);
 
         // Inject the mocked RestTemplate into the service
         ReflectionTestUtils.setField(recommendationOrchestratorService, "restTemplate", restTemplate);

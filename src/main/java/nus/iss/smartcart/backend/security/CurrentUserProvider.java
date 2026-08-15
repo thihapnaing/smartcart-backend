@@ -30,19 +30,11 @@ public class CurrentUserProvider {
     }
 
     public User getCurrentMerchant() {
-        //return getCurrentUserWithRole(UserRole.MERCHANT); for JWT auth
-        return userRepository.findById(1L)
-                .orElseThrow(() -> new IllegalStateException(
-                        "Seed data missing: expected merchant id=1 (smartcart_offical)"
-                ));
+        return getCurrentUserWithRole(UserRole.MERCHANT);
     }
 
     public User getCurrentCustomer() {
-        //return getCurrentUserWithRole(UserRole.CUSTOMER); for JWT auth
-        return userRepository.findById(2L)
-                .orElseThrow(() -> new IllegalStateException(
-                        "Seed data missing: expected customer id=2 (grace)"
-                ));
+        return getCurrentUserWithRole(UserRole.CUSTOMER);
     }
 
     public User getCurrentAdmin() {

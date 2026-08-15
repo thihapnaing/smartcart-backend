@@ -64,6 +64,7 @@ public class AdminProductService {
                 .gender(product.getGender() != null ? product.getGender().name() : null)
                 .status(product.getStatus() != null ? product.getStatus().name() : null)
                 .createdAt(product.getCreatedAt())
+                .merchantId(product.getMerchant() != null ? product.getMerchant().getId() : null)
                 .build();
     }
 }

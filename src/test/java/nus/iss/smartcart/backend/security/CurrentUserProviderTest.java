@@ -109,39 +109,48 @@ class CurrentUserProviderTest {
     }
 
     // ── getCurrentMerchant / getCurrentCustomer ─────────────────────────
-    // No merchant/customer login UI exists yet, so these are hardcoded to a seed user
-    // rather than reading SecurityContextHolder - see the class-level comment.
+    // Same real-auth path as getCurrentAdmin now - see the class-level comment.
 
     @Test
-    void getCurrentMerchant_returnsSeedMerchant_id1() {
-        User merchant = user(1L, "merchant@smartcart.demo", UserRole.MERCHANT);
-        when(userRepository.findById(1L)).thenReturn(Optional.of(merchant));
+    void getCurrentMerchant_returnsTheAuthenticatedUser_whenTheirRoleIsMerchant() {
+        authenticateAs("merchant@smartcart.com");
+        User merchant = user(1L, "merchant@smartcart.com", UserRole.MERCHANT);
+        when(userRepository.findByEmail("merchant@smartcart.com")).thenReturn(Optional.of(merchant));
 
         assertSame(merchant, provider().getCurrentMerchant());
     }
 
     @Test
-    void getCurrentMerchant_throwsIllegalState_whenSeedMerchantIsMissing() {
-        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+    void getCurrentMerchant_throwsForbidden_whenTheAuthenticatedUserIsNotAMerchant() {
+        authenticateAs("customer@smartcart.com");
+        User customer = user(2L, "customer@smartcart.com", UserRole.CUSTOMER);
+        when(userRepository.findByEmail("customer@smartcart.com")).thenReturn(Optional.of(customer));
         CurrentUserProvider provider = provider();
 
-        assertThrows(IllegalStateException.class, provider::getCurrentMerchant);
+        assertThrows(ForbiddenException.class, provider::getCurrentMerchant);
     }
 
     @Test
-    void getCurrentCustomer_returnsSeedCustomer_id2() {
-        User customer = user(2L, "grace@smartcart.demo", UserRole.CUSTOMER);
-        when(userRepository.findById(2L)).thenReturn(Optional.of(customer));
+    void getCurrentMerchant_throwsForbidden_whenNoOneIsAuthenticated() {
+        CurrentUserProvider provider = provider();
+
+        assertThrows(ForbiddenException.class, provider::getCurrentMerchant);
+    }
+
+    @Test
+    void getCurrentCustomer_returnsTheAuthenticatedUser_whenTheirRoleIsCustomer() {
+        authenticateAs("grace@smartcart.com");
+        User customer = user(2L, "grace@smartcart.com", UserRole.CUSTOMER);
+        when(userRepository.findByEmail("grace@smartcart.com")).thenReturn(Optional.of(customer));
 
         assertSame(customer, provider().getCurrentCustomer());
     }
 
     @Test
-    void getCurrentCustomer_throwsIllegalState_whenSeedCustomerIsMissing() {
-        when(userRepository.findById(2L)).thenReturn(Optional.empty());
+    void getCurrentCustomer_throwsForbidden_whenNoOneIsAuthenticated() {
         CurrentUserProvider provider = provider();
 
-        assertThrows(IllegalStateException.class, provider::getCurrentCustomer);
+        assertThrows(ForbiddenException.class, provider::getCurrentCustomer);
     }
 
     @Test

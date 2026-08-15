@@ -12,14 +12,11 @@ import org.springframework.stereotype.Component;
 /**
  * Resolves the caller's User entity.
  *
- * getCurrentAdmin() reads the real JwtAuthenticationFilter SecurityContext and enforces the
- * ADMIN role - the Angular admin area has a real login flow, so this is real auth.
- *
- * getCurrentMerchant()/getCurrentCustomer() are still hardcoded to a seed user: there's no
- * merchant or customer login UI yet, so no JWT is ever sent on those requests -
- * SecurityContextHolder would just be empty/anonymous, and switching these to real auth
- * (like ADMIN's) would 403 every cart/chat/order request from the storefront. Revisit once
- * merchant/customer login exists.
+ * All three - getCurrentAdmin(), getCurrentMerchant(), getCurrentCustomer() - read the real
+ * JwtAuthenticationFilter SecurityContext and enforce the matching role, throwing
+ * ForbiddenException if no one is authenticated or the authenticated account has a different
+ * role. Customer/merchant login shares one endpoint (POST /api/auth/login) with admin - see
+ * AuthController/AuthService - so the same real-auth path works for all three roles.
  */
 @Component
 public class CurrentUserProvider {
@@ -30,19 +27,11 @@ public class CurrentUserProvider {
     }
 
     public User getCurrentMerchant() {
-        //return getCurrentUserWithRole(UserRole.MERCHANT); for JWT auth
-        return userRepository.findById(1L)
-                .orElseThrow(() -> new IllegalStateException(
-                        "Seed data missing: expected merchant id=1 (smartcart_offical)"
-                ));
+        return getCurrentUserWithRole(UserRole.MERCHANT);
     }
 
     public User getCurrentCustomer() {
-        //return getCurrentUserWithRole(UserRole.CUSTOMER); for JWT auth
-        return userRepository.findById(2L)
-                .orElseThrow(() -> new IllegalStateException(
-                        "Seed data missing: expected customer id=2 (grace)"
-                ));
+        return getCurrentUserWithRole(UserRole.CUSTOMER);
     }
 
     public User getCurrentAdmin() {

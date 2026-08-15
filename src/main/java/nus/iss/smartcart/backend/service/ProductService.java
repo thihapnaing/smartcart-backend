@@ -83,6 +83,7 @@ public class ProductService {
         product.setMerchant(merchant);
         product.setShopName(shopName);
         product.setImageUrl(request.getImageUrl());
+        product.setColor(request.getColor());
         product.setStatus(request.getStatus());
 
         List<ProductVariant> variants = request.getVariants().stream()
@@ -132,6 +133,7 @@ public class ProductService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
         assertOwnership(product);
+        checkIfLockedByAdmin(product);
         product.setStatus(ProductStatus.ACTIVE);
         return createProductDetailResponse(productRepository.save(product));
     }
@@ -145,11 +147,18 @@ public class ProductService {
                 .toList();
     }
 
+    private void checkIfLockedByAdmin(Product product) {
+        if (product.getAdminLocked()) {
+            throw new ForbiddenException("Product is locked by admin");
+        }
+    }
+
     private void applyScalarUpdates(Product product, ProductRequest request, Category category) {
         product.setCategory(category);
         product.setName(request.getName());
         product.setDescription(request.getDescription());
         product.setPrice(request.getPrice());
+        product.setColor(request.getColor());
         product.setGender(request.getGender());
         product.setImageUrl(request.getImageUrl());
         product.setStatus(request.getStatus());
@@ -198,6 +207,7 @@ public class ProductService {
                 .categoryName(product.getCategory().getName())
                 .shopName(product.getShopName())
                 .status(product.getStatus().name())
+                .color(product.getColor())
                 .variants(variantDetailList)
                 .build();
     }

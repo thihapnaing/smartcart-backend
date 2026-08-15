@@ -15,7 +15,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.invocation.InvocationOnMock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.stubbing.Answer;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -111,13 +113,15 @@ class OrderServiceTest {
         when(product.getName()).thenReturn("White Tee");
         when(product.getImageUrl()).thenReturn("/assets/products/photo1");
         when(product.getGender()).thenReturn(Gender.MEN);
+        User merchant = mock(User.class);
+        when(product.getMerchant()).thenReturn(merchant);
         Category category = mock(Category.class);
         when(product.getCategory()).thenReturn(category);
         when(category.getName()).thenReturn("Tops");
         when(product.getPrice()).thenReturn(BigDecimal.valueOf(1));
         Order order = mock(Order.class);
         when(orderRepository.save(any(Order.class))).thenReturn(order);
-        CheckoutRequest checkoutRequest= mock(CheckoutRequest.class);
+        CheckoutRequest checkoutRequest = mock(CheckoutRequest.class);
         when(checkoutRequest.getFirstName()).thenReturn("John");
         when(checkoutRequest.getLastName()).thenReturn("Smith");
         when(checkoutRequest.getPhoneNumber()).thenReturn("91234567");
@@ -134,7 +138,11 @@ class OrderServiceTest {
         when(order.getStatus()).thenReturn(OrderStatus.PAID);
         when(checkoutRequest.getPaymentMethod()).thenReturn(PaymentMethod.CREDIT_CARD);
 
-        CheckoutResponse response = orderService.checkout(1L, checkoutRequest);
+        List<CheckoutResponse> responses = orderService.checkout(1L, checkoutRequest);
+
+        assertEquals(1, responses.size());
+        CheckoutResponse response = responses.get(0);
+
         assertEquals(1L, response.getOrderId());
         assertEquals(BigDecimal.valueOf(1), response.getTotalAmount());
         assertEquals(OrderStatus.PAID, response.getOrderStatus());
@@ -162,6 +170,66 @@ class OrderServiceTest {
         verify(paymentRepository).save(any(Payment.class));
 
         assertTrue(cart.getItems().isEmpty());
+    }
+
+    @Test
+    void checkout_multipleMerchants_createsSeparateOrderPerMerchant() {
+        when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(cart));
+
+        // Merchant A's item
+        CartItem cartItemA = mock(CartItem.class);
+        ProductVariant variantA = mock(ProductVariant.class);
+        Product productA = mock(Product.class);
+        User merchantA = mock(User.class);
+
+        when(cartItemA.getProductVariant()).thenReturn(variantA);
+        when(cartItemA.getQuantity()).thenReturn(1);
+        when(variantA.getStock()).thenReturn(5);
+        when(variantA.getProduct()).thenReturn(productA);
+        when(productA.getMerchant()).thenReturn(merchantA);
+        when(productA.getPrice()).thenReturn(BigDecimal.valueOf(10));
+
+        // Merchant B's item
+        CartItem cartItemB = mock(CartItem.class);
+        ProductVariant variantB = mock(ProductVariant.class);
+        Product productB = mock(Product.class);
+        User merchantB = mock(User.class);
+
+        when(cartItemB.getProductVariant()).thenReturn(variantB);
+        when(cartItemB.getQuantity()).thenReturn(1);
+        when(variantB.getStock()).thenReturn(5);
+        when(variantB.getProduct()).thenReturn(productB);
+        when(productB.getMerchant()).thenReturn(merchantB);
+        when(productB.getPrice()).thenReturn(BigDecimal.valueOf(20));
+
+        when(cartItemRepository.findByCartId(cart.getId())).thenReturn(List.of(cartItemA, cartItemB));
+
+        User user = mock(User.class);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        CheckoutRequest checkoutRequest = mock(CheckoutRequest.class);
+        when(checkoutRequest.getPaymentMethod()).thenReturn(PaymentMethod.CREDIT_CARD);
+
+        when(orderRepository.save(any(Order.class))).thenAnswer(new Answer<Order>() {
+            private long nextId = 1L;
+            @Override
+            public Order answer(InvocationOnMock invocation) {
+                Order order = mock(Order.class);
+                when(order.getId()).thenReturn(nextId++);
+                when(order.getStatus()).thenReturn(OrderStatus.PAID);
+                when(order.getTotalAmount()).thenReturn(BigDecimal.valueOf(10));
+                return order;
+            }
+        });
+
+        when(cart.getItems()).thenReturn(new ArrayList<>());
+        when(orderItemRepository.findByOrderId(anyLong())).thenReturn(List.of());
+
+        List<CheckoutResponse> responses = orderService.checkout(1L, checkoutRequest);
+
+        assertEquals(2, responses.size());
+        verify(orderRepository, times(2)).save(any(Order.class));
+        verify(paymentRepository, times(2)).save(any(Payment.class));
     }
 
     @Test

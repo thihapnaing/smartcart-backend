@@ -28,9 +28,9 @@ public class OrderController {
 
     //change to authenticated user ID, once JWT auth is implemented
     @PostMapping("/checkout")
-    public ResponseEntity<CheckoutResponse> checkout(@RequestBody CheckoutRequest request) {
+    public ResponseEntity<List<CheckoutResponse>> checkout(@RequestBody CheckoutRequest request) {
         Long userId = currentUserProvider.getCurrentCustomer().getId();
-        CheckoutResponse response  = orderService.checkout(userId, request);
+        List<CheckoutResponse> response = orderService.checkout(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

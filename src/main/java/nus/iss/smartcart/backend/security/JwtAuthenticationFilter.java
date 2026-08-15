@@ -17,7 +17,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-//Author: Junior
+// Author: Junior
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -31,6 +31,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             CustomUserDetailsService userDetailsService,
             UserRepository userRepository
     ) {
+
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
         this.userRepository = userRepository;
@@ -53,29 +54,37 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        String token = authorization.substring(7);
+        String token =
+                authorization.substring(7);
 
         try {
 
-            String email = jwtService.extractEmail(token);
+            // JWT subject is now EMAIL
+            String email =
+                    jwtService.extractEmail(token);
 
             if (email != null &&
                     SecurityContextHolder
                             .getContext()
                             .getAuthentication() == null) {
 
-                User user = userRepository.findByEmail(email)
-                        .orElse(null);
+                // Find user using EMAIL
+                User user =
+                        userRepository
+                                .findByEmail(email)
+                                .orElse(null);
 
                 if (user != null &&
-                        jwtService.isTokenValid(token, user)) {
+                        jwtService.isTokenValid(
+                                token,
+                                user
+                        )) {
 
                     UserDetails userDetails =
                             userDetailsService
-                                    .loadUserByUsername(email);
+                                    .loadUserByEmail(email);
 
-                    UsernamePasswordAuthenticationToken
-                            authentication =
+                    UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails,
                                     null,
@@ -89,8 +98,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
         } catch (Exception ignored) {
+
             // Invalid JWT.
-            // Request will continue without authentication.
+            // Request continues without authentication.
         }
 
         filterChain.doFilter(request, response);

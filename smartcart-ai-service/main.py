@@ -48,7 +48,7 @@ async def lifespan(_app: FastAPI):
     try:
         print("[Startup] Syncing product catalog with ChromaDB...")
         #catalog = ProductCatalog()
-        #catalog.reindex()
+        catalog.reindex()
     except Exception as e:
         print(f"[Startup Warning] Could not sync ChromaDB: {e}")
     # --------------------------------------------------------

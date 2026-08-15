@@ -102,10 +102,12 @@ public class SecurityConfig {
                                 "/api/orders/**",
                                 "/api/user-profile/**",
                                 "/api/v1/recommendations/**",
-                                "/api/v1/products/**"
+                                "/api/v1/products/**",
+                                "/api/home/**"
                         )
                         .permitAll()
-
+                        
+                                           
                         // Everything else requires authentication
                         .anyRequest()
                         .authenticated()

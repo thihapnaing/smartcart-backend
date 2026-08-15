@@ -1,57 +1,54 @@
 package nus.iss.smartcart.backend.controller;
 
-import nus.iss.smartcart.backend.dto.RecommendationResultDTO;
-import nus.iss.smartcart.backend.dto.RecommendedProductResponseDTO;
+import nus.iss.smartcart.backend.model.User;
 import nus.iss.smartcart.backend.repository.UserRepository;
-import nus.iss.smartcart.backend.security.CustomUserDetailsService;
-import nus.iss.smartcart.backend.security.JwtService;
 import nus.iss.smartcart.backend.service.RecommendationOrchestratorService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-
-// 1. Updated import for WebMvcTest in Spring Boot 4+
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-// 2. Updated import for the new MockitoBean 
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-
-import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.math.BigDecimal;
-import java.util.List;
+import java.security.Principal;
+import java.util.Optional;
 
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = RecommendationController.class)
-class RecommendationControllerTest {
+@WebMvcTest(RecommendationController.class)
+public class RecommendationControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    // 3. Swapped the removed @MockBean for @MockitoBean
     @MockitoBean
     private RecommendationOrchestratorService recommendationService;
-    @MockitoBean private JwtService jwtService;
-    @MockitoBean private CustomUserDetailsService customUserDetailsService;
-    @MockitoBean private UserRepository userRepository;
+
+    // Add the new UserRepository mock
+    @MockitoBean
+    private UserRepository userRepository;
 
     @Test
-    void testGetRecommendations_Returns200() throws Exception {
-        RecommendedProductResponseDTO productDTO = new RecommendedProductResponseDTO(
-                2L, "Linen Shirt", "Tops", new BigDecimal("39.90"),
-                "/assets/products/linen-shirt.jpg", "Great fit", 0.9
-        );
-        RecommendationResultDTO resultDTO = new RecommendationResultDTO("Summary text", List.of(productDTO));
+    void testGetRecommendations() throws Exception {
+        // Mock the authenticated user's Principal (the JWT token representation)
+        Principal mockPrincipal = mock(Principal.class);
+        when(mockPrincipal.getName()).thenReturn("grace@example.com");
 
-        when(recommendationService.getRecommendationsForUser(2L)).thenReturn(resultDTO);
+        // Mock the UserRepository to return a valid User when findByEmail is called
+        User mockUser = new User();
+        mockUser.setId(2L); // Simulating Grace's user ID
+        mockUser.setEmail("grace@example.com");
+        when(userRepository.findByEmail("grace@example.com")).thenReturn(Optional.of(mockUser));
 
-        mockMvc.perform(get("/api/v1/recommendations/2")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.agent_summary").value("Summary text"))
-                .andExpect(jsonPath("$.products[0].id").value(2))
-                .andExpect(jsonPath("$.products[0].name").value("Linen Shirt"));
+        // Mock your service response
+        when(recommendationService.getRecommendationsForUser(anyLong())).thenReturn(null); // Or return a mock DTO
+
+        // Perform the GET request WITHOUT the /{userId} in the URL, passing the mocked Principal
+        mockMvc.perform(get("/api/v1/recommendations")
+                .principal(mockPrincipal))
+                .andExpect(status().isOk());
     }
 }

@@ -9,6 +9,7 @@ import nus.iss.smartcart.backend.dto.MerchantOrderItemResponse;
 import nus.iss.smartcart.backend.model.*;
 import nus.iss.smartcart.backend.repository.*;
 import nus.iss.smartcart.backend.security.CurrentUserProvider;
+import nus.iss.smartcart.backend.dto.UpdateOrderStatusResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -291,4 +292,65 @@ class OrderServiceTest {
         assertEquals("John", response.getBuyerFirstName());
     }
 
+    @Test
+    void updateOrderStatus_orderBelongsToMerchant_updatesStatusAndReturnsResponse() {
+        User merchant = mock(User.class);
+        when(merchant.getId()).thenReturn(1L);
+        when(currentUserProvider.getCurrentMerchant()).thenReturn(merchant);
+
+        Order order = mock(Order.class);
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        Product product = mock(Product.class);
+        when(product.getMerchant()).thenReturn(merchant);
+        ProductVariant productVariant = mock(ProductVariant.class);
+        when(productVariant.getProduct()).thenReturn(product);
+        OrderItem orderItem = mock(OrderItem.class);
+        when(orderItem.getProductVariant()).thenReturn(productVariant);
+        when(orderItemRepository.findByOrderId(1L)).thenReturn(List.of(orderItem));
+
+        when(order.getId()).thenReturn(1L);
+        when(order.getStatus()).thenReturn(OrderStatus.PACKED);
+        when(orderRepository.save(order)).thenReturn(order);
+
+        UpdateOrderStatusResponse response = orderService.updateOrderStatus(1L, OrderStatus.PACKED);
+
+        assertEquals(1L, response.getOrderId());
+        assertEquals("PACKED", response.getStatus());
+        verify(order).setStatus(OrderStatus.PACKED);
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void updateOrderStatus_orderNotFound_throwsEntityNotFoundException() {
+        User merchant = mock(User.class);
+        when(currentUserProvider.getCurrentMerchant()).thenReturn(merchant);
+        when(orderRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThrows(EntityNotFoundException.class, () -> orderService.updateOrderStatus(1L, OrderStatus.PACKED));
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void updateOrderStatus_orderBelongsToDifferentMerchant_throwsEntityNotFoundException() {
+        User merchant = mock(User.class);
+        when(merchant.getId()).thenReturn(1L);
+        when(currentUserProvider.getCurrentMerchant()).thenReturn(merchant);
+
+        Order order = mock(Order.class);
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        User anotherMerchant = mock(User.class);
+        when(anotherMerchant.getId()).thenReturn(2L);
+        Product product = mock(Product.class);
+        when(product.getMerchant()).thenReturn(anotherMerchant);
+        ProductVariant productVariant = mock(ProductVariant.class);
+        when(productVariant.getProduct()).thenReturn(product);
+        OrderItem orderItem = mock(OrderItem.class);
+        when(orderItem.getProductVariant()).thenReturn(productVariant);
+        when(orderItemRepository.findByOrderId(1L)).thenReturn(List.of(orderItem));
+
+        assertThrows(EntityNotFoundException.class, () -> orderService.updateOrderStatus(1L, OrderStatus.PACKED));
+        verify(orderRepository, never()).save(any());
+    }
 }

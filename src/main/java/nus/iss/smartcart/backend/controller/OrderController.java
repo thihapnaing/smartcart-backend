@@ -8,6 +8,8 @@ import nus.iss.smartcart.backend.service.OrderService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import nus.iss.smartcart.backend.dto.UpdateOrderStatusRequest;
+import nus.iss.smartcart.backend.dto.UpdateOrderStatusResponse;
 
 import java.util.List;
 
@@ -41,6 +43,14 @@ public class OrderController {
     @GetMapping("/merchant")
     public ResponseEntity<List<MerchantOrderItemResponse>> getMerchantOrderItems() {
         List<MerchantOrderItemResponse> response = orderService.getMerchantOrderItems();
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<UpdateOrderStatusResponse> updateOrderStatus(
+            @PathVariable Long id,
+            @RequestBody UpdateOrderStatusRequest request) {
+        UpdateOrderStatusResponse response = orderService.updateOrderStatus(id, request.getStatus());
         return ResponseEntity.ok(response);
     }
 }

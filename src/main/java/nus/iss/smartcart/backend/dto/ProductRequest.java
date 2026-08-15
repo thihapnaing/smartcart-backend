@@ -37,6 +37,8 @@ public class ProductRequest {
 
     private String imageUrl;
 
+    private String color;
+
     @NotEmpty
     @Valid
     private List<VariantRequest> variants;

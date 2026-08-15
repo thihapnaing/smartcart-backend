@@ -19,4 +19,5 @@ public class CartItemDetail {
     private BigDecimal subtotal;
     private String gender;
     private String categoryName;
+    private String shopName;
 }

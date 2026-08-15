@@ -27,6 +27,12 @@ chromadb>=0.4.0
 pandas>=2.0.0
 pydantic>=2.0.0
 
+# Explicit floors for chromadb's transitive deps, to clear Trivy CVEs
+# (GHSA-6v7p-g79w-8964, CVE-2025-47273) that the versions chromadb itself
+# resolves to are otherwise vulnerable to.
+msgpack>=1.2.1
+setuptools>=78.1.1
+
 # ==========================
 # OpenAI / LangChain
 # ==========================

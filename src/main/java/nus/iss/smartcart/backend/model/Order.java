@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,7 +47,7 @@ public class Order {
 
     @PrePersist
     protected void onCreate() {
-        this.orderDate = LocalDateTime.now();
+        this.orderDate = LocalDateTime.now(ZoneId.of("Asia/Singapore"));
     }
 
     @Column(name = "tracking_no", unique = true)

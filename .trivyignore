@@ -1,0 +1,17 @@
+# Trivy ignore list — CVEs reviewed and accepted as non-exploitable in this
+# deployment's actual architecture. See smartcart-ai-service/.trivyignore for
+# the AI microservice's equivalent list.
+# Re-review each entry periodically in case an upstream fix becomes available.
+
+# libexpat (eclipse-temurin:17-jre-alpine base image): integer overflow in
+# XML parsing. This Spring Boot service has no XML config or XML parsing in
+# its own code (properties-based config, JSON over REST); the JVM's own XML
+# support uses its bundled Xerces implementation, not the system libexpat C
+# library, so this is never on a reachable code path.
+CVE-2026-56408
+
+# p11-kit / p11-kit-trust (eclipse-temurin:17-jre-alpine base image): NULL
+# dereference via C_DeriveKey with a PKCS#11 module. This service never
+# configures a PKCS11 keystore provider or otherwise touches p11-kit; the
+# JVM uses its own default cacerts trust store.
+CVE-2026-2100

@@ -1,0 +1,22 @@
+# Trivy ignore list — CVEs reviewed and accepted as non-exploitable in this
+# deployment's actual architecture. See project report for full triage notes.
+# Re-review each entry periodically in case an upstream fix becomes available.
+
+# chromadb: pre-auth RCE requires a network-exposed chromadb server.
+# This service uses chromadb.PersistentClient() (embedded mode) only —
+# no HttpClient, no separate chromadb port/service. Not reachable.
+CVE-2026-45829
+
+# glib: D-Bus introspection XML parsing. Not invoked by this Python/FastAPI service.
+CVE-2026-58016
+
+# libxml2 (AI service base image): no XML parsing in this codebase
+# (confirmed: no lxml or XML libraries in requirements.txt).
+CVE-2026-6653
+
+# perl / perl-base / Storable / perl-archive-tar: base Debian image includes
+# Perl by default; this service never invokes it (Python-only application).
+CVE-2026-13221
+CVE-2026-42496
+CVE-2026-57433
+CVE-2026-8376

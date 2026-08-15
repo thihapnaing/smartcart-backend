@@ -12,12 +12,11 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class HomeContentServiceTest {
+class HomeContentServiceTest {
 
     @Mock
     private RestTemplate restTemplate;
@@ -50,7 +49,7 @@ public class HomeContentServiceTest {
         );
 
         // 2. Define Mockito Behavior
-        when(restTemplate.postForObject(eq(expectedUrl), eq(expectedPayload), eq(Map.class)))
+        when(restTemplate.postForObject(expectedUrl, expectedPayload, Map.class))
                 .thenReturn(mockResponse);
 
         // 3. Execute the Method
@@ -62,7 +61,7 @@ public class HomeContentServiceTest {
         assertEquals("<h3>Outfit of the Week</h3>", actualResponse.get("generated_article_html"));
 
         // Verify the RestTemplate was called exactly once with correct parameters
-        verify(restTemplate).postForObject(eq(expectedUrl), eq(expectedPayload), eq(Map.class));
+        verify(restTemplate).postForObject(expectedUrl, expectedPayload, Map.class);
     }
 
     @Test

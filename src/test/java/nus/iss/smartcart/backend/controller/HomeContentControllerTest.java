@@ -9,7 +9,6 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 // NEW Spring Boot 4 Import for MockitoBean
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import nus.iss.smartcart.backend.security.JwtAuthenticationFilter; 
-import org.springframework.test.context.bean.override.mockito.MockitoBean; 
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 
 
@@ -23,7 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(HomeContentController.class)
 @AutoConfigureMockMvc(addFilters = false)
-public class HomeContentControllerTest {
+class HomeContentControllerTest {
 
     @Autowired
     private MockMvc mockMvc;

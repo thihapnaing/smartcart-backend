@@ -25,7 +25,7 @@ import nus.iss.smartcart.backend.security.JwtAuthenticationFilter;
 @WebMvcTest(RecommendationController.class)
 @AutoConfigureMockMvc(addFilters = false)
 @TestPropertySource(properties = "jwt.secret=404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970")
-public class RecommendationControllerTest {
+class RecommendationControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -53,7 +53,7 @@ public class RecommendationControllerTest {
         when(userRepository.findByEmail("grace@example.com")).thenReturn(Optional.of(mockUser));
 
         // Mock your service response
-        when(recommendationService.getRecommendationsForUser(anyLong())).thenReturn(null); // Or return a mock DTO
+        when(recommendationService.getRecommendationsForUser(anyLong())).thenReturn(null); 
 
         // Perform the GET request WITHOUT the /{userId} in the URL, passing the mocked Principal
         mockMvc.perform(get("/api/v1/recommendations")

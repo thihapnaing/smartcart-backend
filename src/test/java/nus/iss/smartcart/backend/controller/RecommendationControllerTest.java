@@ -19,6 +19,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import nus.iss.smartcart.backend.security.JwtAuthenticationFilter;
+
 
 @WebMvcTest(RecommendationController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -27,6 +29,9 @@ public class RecommendationControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+    
+    @MockitoBean
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @MockitoBean
     private RecommendationOrchestratorService recommendationService;

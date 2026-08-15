@@ -8,6 +8,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 // NEW Spring Boot 4 Import for MockitoBean
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import nus.iss.smartcart.backend.security.JwtAuthenticationFilter; 
+import org.springframework.test.context.bean.override.mockito.MockitoBean; 
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+
 
 import org.springframework.test.web.servlet.MockMvc;
 import java.util.Map;
@@ -18,10 +22,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(HomeContentController.class)
+@AutoConfigureMockMvc(addFilters = false)
 public class HomeContentControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+    
+    @MockitoBean
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     // Replaced @MockBean with the new Spring 4 @MockitoBean
     @MockitoBean

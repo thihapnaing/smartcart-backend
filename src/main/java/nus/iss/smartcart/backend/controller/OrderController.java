@@ -45,11 +45,6 @@ public class OrderController {
     }
 
     // for delivery app
-//    @GetMapping("/orders")
-//    public List<Order> getAllOrders() {
-//        return orderService.getAllOrders();
-//    }
-
     @GetMapping(
             value = "/orders",
             produces = MediaType.APPLICATION_JSON_VALUE
@@ -59,12 +54,6 @@ public class OrderController {
                 orderService.getDeliveryOrders()
         );
     }
-//    @GetMapping("/orders")
-//    public ResponseEntity<List<DeliveryOrderDto>> getDeliveryOrders() {
-//        return ResponseEntity.ok(
-//                orderService.getDeliveryOrders()
-//        );
-//    }
 
     @GetMapping("/assigned/{deliveryPersonId}")
     public ResponseEntity<List<Order>> getAssignedOrders(
@@ -79,10 +68,9 @@ public class OrderController {
     }
 
     @GetMapping("/in-progress/{deliveryPersonId}")
-    public ResponseEntity<List<Order>> getInProgressOrders(
+    public ResponseEntity<List<DeliveryOrderDto>>getInProgressOrders(
             @PathVariable Long deliveryPersonId
     ) {
-
         return ResponseEntity.ok(
                 orderService.getInProgressOrders(
                         deliveryPersonId
@@ -91,10 +79,9 @@ public class OrderController {
     }
 
     @GetMapping("/completed/{deliveryPersonId}")
-    public ResponseEntity<List<Order>> getCompletedOrders(
+    public ResponseEntity<List<DeliveryOrderDto>> getCompletedOrders(
             @PathVariable Long deliveryPersonId
     ) {
-
         return ResponseEntity.ok(
                 orderService.getCompletedOrders(
                         deliveryPersonId
@@ -178,11 +165,11 @@ public class OrderController {
     }
 
     @PatchMapping("/{orderId}/delivery-details")
-    public ResponseEntity<Order> updateDeliveryDetails(
+    public ResponseEntity<DeliveryOrderDto> updateDeliveryDetails(
             @PathVariable Long orderId,
             @RequestBody UpdateDeliveryRequest request
     ) {
-        Order updatedOrder =
+        DeliveryOrderDto updatedOrder =
                 orderService.updateDeliveryDetails(
                         orderId,
                         request

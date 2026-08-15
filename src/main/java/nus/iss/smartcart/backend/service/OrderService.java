@@ -5,14 +5,18 @@ import nus.iss.smartcart.backend.model.*;
 import nus.iss.smartcart.backend.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import nus.iss.smartcart.backend.security.CurrentUserProvider;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import java.time.LocalDateTime;
+import nus.iss.smartcart.backend.dto.UpdateDeliveryRequest;
+import nus.iss.smartcart.backend.model.OrderStatus;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class OrderService {
@@ -219,27 +223,35 @@ public class OrderService {
         return orderRepository.findByDeliveryPersonId(deliveryPersonId);
     }
 
-    public List<Order> getInProgressOrders(
+    @Transactional(readOnly = true)
+    public List<DeliveryOrderDto> getInProgressOrders(
             Long deliveryPersonId
     ) {
         return orderRepository
-                .findByDeliveryPersonIdAndStatusInOrderByIdDesc(
+                .findByDeliveryPersonIdAndStatusIn(
                         deliveryPersonId,
                         List.of(
                                 OrderStatus.PACKED,
                                 OrderStatus.PICKED_UP
                         )
-                );
+                )
+                .stream()
+                .map(this::toDeliveryOrderDto)
+                .toList();
     }
 
-    public List<Order> getCompletedOrders(
+    @Transactional(readOnly = true)
+    public List<DeliveryOrderDto> getCompletedOrders(
             Long deliveryPersonId
     ) {
         return orderRepository
-                .findByDeliveryPersonIdAndStatusOrderByDeliveredAtDesc(
+                .findByDeliveryPersonIdAndStatus(
                         deliveryPersonId,
                         OrderStatus.DELIVERED
-                );
+                )
+                .stream()
+                .map(this::toDeliveryOrderDto)
+                .toList();
     }
 
     @Transactional
@@ -355,20 +367,15 @@ public class OrderService {
         Order savedOrder =
                 orderRepository.save(order);
 
-//        pushNotificationService.notifyJobAssigned(
-//                savedOrder
-//        );
-
         return savedOrder;
     }
 
     @Transactional
-    public Order updateDeliveryDetails(
+    public DeliveryOrderDto updateDeliveryDetails(
             Long orderId,
             UpdateDeliveryRequest request
     ) {
-        Order order = orderRepository
-                .findById(orderId)
+        Order order = orderRepository.findById(orderId)
                 .orElseThrow(() ->
                         new ResponseStatusException(
                                 HttpStatus.NOT_FOUND,
@@ -376,94 +383,120 @@ public class OrderService {
                         )
                 );
 
-        Long previousDeliveryPersonId =
-                order.getDeliveryPersonId();
+        OrderStatus newStatus =
+                request.getStatus() != null
+                        ? request.getStatus()
+                        : order.getStatus();
 
-        if (request.getTrackingNo() != null &&
-                !request.getTrackingNo().isBlank()) {
+        String newTrackingNo = order.getTrackingNo();
 
-            String trackingNo =
-                    request.getTrackingNo().trim();
-
-            orderRepository
-                    .findByTrackingNo(trackingNo)
-                    .filter(existingOrder ->
-                            !existingOrder.getId()
-                                    .equals(orderId)
-                    )
-                    .ifPresent(existingOrder -> {
-                        throw new ResponseStatusException(
-                                HttpStatus.CONFLICT,
-                                "Tracking number already exists"
-                        );
-                    });
-
-            order.setTrackingNo(trackingNo);
+        if (request.getTrackingNo() != null) {
+            newTrackingNo =
+                    request.getTrackingNo().isBlank()
+                            ? null
+                            : request.getTrackingNo().trim();
         }
 
-        if (request.getDeliveryPersonId() != null) {
-            if (order.getTrackingNo() == null ||
-                    order.getTrackingNo().isBlank()) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Tracking number is required before assigning a driver"
-                );
-            }
+        Long requestedDeliveryPersonId =
+                request.getDeliveryPersonId();
 
-            if (order.getStatus() != OrderStatus.PACKED) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Only PACKED orders can be assigned to a driver"
-                );
-            }
-            order.setDeliveryPersonId(
-                    request.getDeliveryPersonId()
+        Long existingDeliveryPersonId =
+                order.getDeliveryPersonId();
+
+        // Do not allow the assigned delivery person to be changed
+        if (requestedDeliveryPersonId != null &&
+                existingDeliveryPersonId != null &&
+                !Objects.equals(
+                        requestedDeliveryPersonId,
+                        existingDeliveryPersonId
+                )) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Delivery person cannot be changed after assignment"
             );
         }
 
-        if (request.getStatus() != null) {
-            order.setStatus(request.getStatus());
+        // True only when this order has no driver and a driver is selected
+        boolean assigningDeliveryPerson =
+                requestedDeliveryPersonId != null &&
+                        existingDeliveryPersonId == null;
+
+        if (assigningDeliveryPerson) {
+            if (newTrackingNo == null) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Tracking number is required when assigning a delivery person"
+                );
+            }
+
+            if (newStatus != OrderStatus.PACKED) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Status must be PACKED when assigning a delivery person"
+                );
+            }
         }
 
-        Order savedOrder =
-                orderRepository.save(order);
+        order.setStatus(newStatus);
+        order.setTrackingNo(newTrackingNo);
 
-        if (request.getDeliveryPersonId() != null) {
+        // Assign only when this is a new assignment
+        if (assigningDeliveryPerson) {
+            order.setDeliveryPersonId(
+                    requestedDeliveryPersonId
+            );
+        }
+
+        if (newStatus == OrderStatus.DELIVERED &&
+                order.getDeliveredAt() == null) {
+            order.setDeliveredAt(LocalDateTime.now());
+        }
+
+        Order updatedOrder = orderRepository.save(order);
+
+        // Notify only for a new delivery-person assignment
+        if (assigningDeliveryPerson) {
             System.out.println(
                     "Sending notification to driver " +
-                            savedOrder.getDeliveryPersonId()
+                            updatedOrder.getDeliveryPersonId()
             );
 
             pushNotificationService.notifyJobAssigned(
-                    savedOrder
+                    updatedOrder
             );
         }
-        return savedOrder;
+
+        return toDeliveryOrderDto(updatedOrder);
     }
 
     @Transactional(readOnly = true)
     public List<DeliveryOrderDto> getDeliveryOrders() {
-        return orderRepository.findAll()
+        return orderRepository.findAll(
+                        Sort.by(Sort.Direction.DESC, "orderDate")
+                )
                 .stream()
                 .map(this::toDeliveryOrderDto)
                 .toList();
     }
 
-    private DeliveryOrderDto toDeliveryOrderDto(Order order) {
+    private DeliveryOrderDto toDeliveryOrderDto(
+            Order order
+    ) {
         return new DeliveryOrderDto(
                 order.getId(),
                 order.getFirstName(),
                 order.getLastName(),
+                order.getShippingAddress(),
+                order.getPhoneNumber(),
                 order.getStatus() != null
                         ? order.getStatus().name()
                         : null,
                 order.getTrackingNo(),
                 order.getDeliveryPersonId(),
-
-                // Order currently stores only the delivery-person ID
-                null,
-
-                order.getDeliveredAt()
+                order.getDeliveredAt(),
+                order.getDeliveryProofKey()
         );
     }
+
 }

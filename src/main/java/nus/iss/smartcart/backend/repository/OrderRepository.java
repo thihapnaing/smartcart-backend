@@ -20,21 +20,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT DISTINCT oi.productVariant.product.name FROM OrderItem oi WHERE oi.order.user.id = :userId")
     List<String> findPurchasedProductNamesByUserId(@Param("userId") Long userId);
 
-    // use by delivery app
+    // Pang wee - use by delivery app
     List<Order> findByDeliveryPersonId(
             Long deliveryPersonId
-    );
-
-    List<Order>
-    findByDeliveryPersonIdAndStatusInOrderByIdDesc(
-            Long deliveryPersonId,
-            Collection<OrderStatus> statuses
-    );
-
-    List<Order>
-    findByDeliveryPersonIdAndStatusOrderByDeliveredAtDesc(
-            Long deliveryPersonId,
-            OrderStatus status
     );
 
     Optional<Order> findByTrackingNo(String trackingNo);
@@ -42,6 +30,16 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Optional<Order> findByTrackingNoAndDeliveryPersonId(
             String trackingNo,
             Long deliveryPersonId
+    );
+
+    List<Order> findByDeliveryPersonIdAndStatusIn(
+            Long deliveryPersonId,
+            List<OrderStatus> statuses
+    );
+
+    List<Order> findByDeliveryPersonIdAndStatus(
+            Long deliveryPersonId,
+            OrderStatus status
     );
     
 }

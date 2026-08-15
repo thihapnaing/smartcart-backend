@@ -6,10 +6,12 @@ public record DeliveryOrderDto(
         Long id,
         String firstName,
         String lastName,
+        String shippingAddress,
+        String phoneNumber,
         String status,
         String trackingNo,
         Long deliveryPersonId,
-        String deliveryPersonName,
-        LocalDateTime deliveredAt
+        LocalDateTime deliveredAt,
+        String deliveryProofKey
 ) {
 }

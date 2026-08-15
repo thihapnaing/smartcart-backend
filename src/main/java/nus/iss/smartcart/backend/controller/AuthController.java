@@ -44,6 +44,18 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/merchant/register")
+    public ResponseEntity<LoginResponse> registerMerchant(
+            @RequestBody RegisterRequest request) {
+
+        LoginResponse response =
+                authService.registerMerchant(request);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
+    }
+
     @PostMapping("/login")
     public ResponseEntity<?> login(
             @RequestBody LoginRequest request

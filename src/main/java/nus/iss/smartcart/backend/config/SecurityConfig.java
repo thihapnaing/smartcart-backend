@@ -68,6 +68,9 @@ public class SecurityConfig {
                         .requestMatchers("/images/**")
                         .permitAll()
 
+                        // Avatar images
+                        .requestMatchers("/api/user-profile/with-avatar").permitAll()
+
                         // Unauthenticated aggregate numbers for the /admin/login screen (see
                         // PublicStatsController) - deliberately separate from /api/admin/**,
                         // which requires an authenticated admin.

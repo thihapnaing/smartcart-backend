@@ -40,12 +40,12 @@ class CurrentUserProviderTest {
         SecurityContextHolder.clearContext();
     }
 
-    private void authenticateAs(String email) {
+    private void authenticateAs(String email, UserRole role) {
         var authentication = new UsernamePasswordAuthenticationToken(
                 new org.springframework.security.core.userdetails.User(
-                        email, "irrelevant", List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))),
+                        email, "irrelevant", List.of(new SimpleGrantedAuthority("ROLE_" + role.name()))),
                 null,
-                List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))
+                List.of(new SimpleGrantedAuthority("ROLE_" + role.name()))
         );
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }
@@ -62,7 +62,7 @@ class CurrentUserProviderTest {
 
     @Test
     void getCurrentAdmin_returnsTheAuthenticatedUser_whenTheirRoleIsAdmin() {
-        authenticateAs("admin@smartcart.com");
+        authenticateAs("admin@smartcart.com", UserRole.ADMIN);
         User admin = user(4L, "admin@smartcart.com", UserRole.ADMIN);
         when(userRepository.findByEmail("admin@smartcart.com")).thenReturn(Optional.of(admin));
 
@@ -73,7 +73,7 @@ class CurrentUserProviderTest {
 
     @Test
     void getCurrentAdmin_throwsForbidden_whenTheAuthenticatedUserIsNotAnAdmin() {
-        authenticateAs("customer@smartcart.com");
+        authenticateAs("customer@smartcart.com", UserRole.ADMIN);
         User customer = user(2L, "customer@smartcart.com", UserRole.CUSTOMER);
         when(userRepository.findByEmail("customer@smartcart.com")).thenReturn(Optional.of(customer));
         CurrentUserProvider provider = provider();
@@ -101,7 +101,7 @@ class CurrentUserProviderTest {
 
     @Test
     void getCurrentAdmin_throwsForbidden_whenTheAuthenticatedEmailNoLongerExists() {
-        authenticateAs("ghost@smartcart.com");
+        authenticateAs("ghost@smartcart.com", UserRole.ADMIN);
         when(userRepository.findByEmail("ghost@smartcart.com")).thenReturn(Optional.empty());
         CurrentUserProvider provider = provider();
 
@@ -109,53 +109,93 @@ class CurrentUserProviderTest {
     }
 
     // ── getCurrentMerchant / getCurrentCustomer ─────────────────────────
-    // Same real-auth path as getCurrentAdmin now - see the class-level comment.
+    // No merchant/customer login UI exists yet, so these are hardcoded to a seed user
+    // rather than reading SecurityContextHolder - see the class-level comment.
 
     @Test
     void getCurrentMerchant_returnsTheAuthenticatedUser_whenTheirRoleIsMerchant() {
-        authenticateAs("merchant@smartcart.com");
-        User merchant = user(1L, "merchant@smartcart.com", UserRole.MERCHANT);
-        when(userRepository.findByEmail("merchant@smartcart.com")).thenReturn(Optional.of(merchant));
+        authenticateAs("merchant@smartcart.demo", UserRole.MERCHANT);
+        User merchant = user(1L, "merchant@smartcart.demo", UserRole.MERCHANT);
+        when(userRepository.findByEmail("merchant@smartcart.demo")).thenReturn(Optional.of(merchant));
 
         assertSame(merchant, provider().getCurrentMerchant());
     }
 
     @Test
     void getCurrentMerchant_throwsForbidden_whenTheAuthenticatedUserIsNotAMerchant() {
-        authenticateAs("customer@smartcart.com");
+        authenticateAs("customer@smartcart.com", UserRole.CUSTOMER);
         User customer = user(2L, "customer@smartcart.com", UserRole.CUSTOMER);
         when(userRepository.findByEmail("customer@smartcart.com")).thenReturn(Optional.of(customer));
-        CurrentUserProvider provider = provider();
 
-        assertThrows(ForbiddenException.class, provider::getCurrentMerchant);
+        assertThrows(ForbiddenException.class, provider()::getCurrentMerchant);
     }
 
     @Test
     void getCurrentMerchant_throwsForbidden_whenNoOneIsAuthenticated() {
-        CurrentUserProvider provider = provider();
+        assertThrows(ForbiddenException.class, provider()::getCurrentMerchant);
+    }
 
-        assertThrows(ForbiddenException.class, provider::getCurrentMerchant);
+    @Test
+    void getCurrentMerchant_throwsForbidden_whenAuthenticatedButNotFullyAuthenticated() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new AnonymousAuthenticationToken("key", "anonymousUser",
+                        List.of(new SimpleGrantedAuthority("ROLE_ANONYMOUS"))));
+
+        assertThrows(ForbiddenException.class, provider()::getCurrentMerchant);
+    }
+
+    @Test
+    void getCurrentMerchant_throwsForbidden_whenTheAuthenticatedEmailNoLongerExists() {
+        authenticateAs("ghost@smartcart.demo", UserRole.MERCHANT);
+        when(userRepository.findByEmail("ghost@smartcart.demo")).thenReturn(Optional.empty());
+
+        assertThrows(ForbiddenException.class, provider()::getCurrentMerchant);
     }
 
     @Test
     void getCurrentCustomer_returnsTheAuthenticatedUser_whenTheirRoleIsCustomer() {
-        authenticateAs("grace@smartcart.com");
-        User customer = user(2L, "grace@smartcart.com", UserRole.CUSTOMER);
-        when(userRepository.findByEmail("grace@smartcart.com")).thenReturn(Optional.of(customer));
+        authenticateAs("customer@smartcart.demo", UserRole.CUSTOMER);
+        User customer = user(2L, "customer@smartcart.demo", UserRole.CUSTOMER);
+        when(userRepository.findByEmail("customer@smartcart.demo")).thenReturn(Optional.of(customer));
 
         assertSame(customer, provider().getCurrentCustomer());
     }
 
     @Test
-    void getCurrentCustomer_throwsForbidden_whenNoOneIsAuthenticated() {
-        CurrentUserProvider provider = provider();
+    void getCurrentCustomer_throwsForbidden_whenTheAuthenticatedUserIsNotACustomer() {
+        authenticateAs("merchant@smartcart.demo", UserRole.MERCHANT);
+        User merchant = user(1L, "merchant@smartcart.demo", UserRole.MERCHANT);
+        when(userRepository.findByEmail("merchant@smartcart.demo")).thenReturn(Optional.of(merchant));
 
-        assertThrows(ForbiddenException.class, provider::getCurrentCustomer);
+        assertThrows(ForbiddenException.class, provider()::getCurrentCustomer);
     }
 
     @Test
+    void getCurrentCustomer_throwsForbidden_whenNoOneIsAuthenticated() {
+        assertThrows(ForbiddenException.class, provider()::getCurrentCustomer);
+    }
+
+    @Test
+    void getCurrentCustomer_throwsForbidden_whenAuthenticatedButNotFullyAuthenticated() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new AnonymousAuthenticationToken("key", "anonymousUser",
+                        List.of(new SimpleGrantedAuthority("ROLE_ANONYMOUS"))));
+
+        assertThrows(ForbiddenException.class, provider()::getCurrentCustomer);
+    }
+
+    @Test
+    void getCurrentCustomer_throwsForbidden_whenTheAuthenticatedEmailNoLongerExists() {
+        authenticateAs("ghost@smartcart.demo", UserRole.CUSTOMER);
+        when(userRepository.findByEmail("ghost@smartcart.demo")).thenReturn(Optional.empty());
+
+        assertThrows(ForbiddenException.class, provider()::getCurrentCustomer);
+    }
+
+
+    @Test
     void roleMismatch_includesTheExpectedRoleInTheMessage() {
-        authenticateAs("customer@smartcart.com");
+        authenticateAs("customer@smartcart.com", UserRole.CUSTOMER);
         User customer = user(2L, "customer@smartcart.com", UserRole.CUSTOMER);
         when(userRepository.findByEmail("customer@smartcart.com")).thenReturn(Optional.of(customer));
         CurrentUserProvider provider = provider();

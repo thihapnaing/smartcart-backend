@@ -5,15 +5,60 @@ services:
     image: mysql:8.0
     container_name: smartcart-mysql
     environment:
-      MYSQL_DATABASE: smartcart_db
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_USER: smartcart_user
-      MYSQL_PASSWORD: smartcart_password
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-smartcart_db}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_USER: ${MYSQL_USER:-smartcart_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-smart-cart_password}
       TZ: 'Asia/Singapore'
     ports:
       - "3306:3306"
     volumes:
       - db_data:/var/lib/mysql
 
+  smartcart-ai-service:
+    build:
+      context: ./smartcart-ai-service
+      dockerfile: Dockerfile
+    container_name: smartcart-ai-service
+    env_file:
+      - path: ./smartcart-ai-service/.env
+        required: false
+    environment:
+      # Override the localhost defaults baked into the service so it reaches
+      # the backend via its compose service name instead.
+      SMARTCART_BACKEND_URL: http://backend:8080
+      SPRING_BOOT_URL: http://backend:8080
+    ports:
+      - "8001:8001"
+    volumes:
+      - ai_chroma_db:/app/chroma_db
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smartcart-backend
+    environment:
+      # Override the localhost defaults baked into application.properties so
+      # the backend reaches its dependencies via their compose service names.
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/${MYSQL_DATABASE:-smartcart_db}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-smartcart_user}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-smart-cart_password}
+      AI_PYTHON_SERVICE_BASE_URL: http://smartcart-ai-service:8001
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql-db
+      - smartcart-ai-service
+
+  frontend:
+    build:
+      context: ../smartcart-web
+    ports:
+      - "4200:8080"
+    depends_on:
+      - backend
+
 volumes:
   db_data:
+  ai_chroma_db:

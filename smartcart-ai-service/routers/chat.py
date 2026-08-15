@@ -38,11 +38,25 @@ class Product(BaseModel):
     defaultVariantId: Optional[int] = None
 
 
+class OrderItem(BaseModel):
+    name: Optional[str] = None
+    price: Optional[float] = None
+    imageUrl: Optional[str] = None
+    quantity: Optional[int] = None
+    # Lets Angular's "Buy again" action call POST /api/cart/items directly.
+    productVariantId: Optional[int] = None
+
+
 class Order(BaseModel):
     orderId: Optional[int] = None
+    # Real trackingNo if the order has one, else a zero-padded "SC-######" fallback - see
+    # ToolDataService.getOrderHistory on the Java side. Must be declared here or pydantic
+    # silently drops it when building ChatResponse, same as Product.defaultVariantId below.
+    orderNumber: Optional[str] = None
     totalAmount: Optional[float] = None
     status: Optional[str] = None
     orderDate: Optional[str] = None
+    items: Optional[list[OrderItem]] = None
 
 
 class ChatResponse(BaseModel):

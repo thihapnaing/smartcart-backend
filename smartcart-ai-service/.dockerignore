@@ -1,0 +1,24 @@
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.env
+
+# Test-only / training-only assets, not read by the running service
+tests/
+training/
+dataset/
+conftest.py
+pytest.ini
+requirements-dev.txt
+
+# Generated at runtime and mounted as a volume; don't bake stale data in
+chroma_db/
+
+.git/
+.gitignore
+.dockerignore
+Dockerfile
+*.md

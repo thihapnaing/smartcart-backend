@@ -34,6 +34,18 @@ def get_order_history(user_id: int) -> str:
 
 
 @mcp.tool()
+def get_spending_summary(user_id: int) -> str:
+    """Look up a SmartCart user's total spending summary - total amount spent, order count,
+    most-bought category, and all purchased categories. Does NOT include individual recent
+    orders, so no order cards render for this tool's results - use it for pure spending-total
+    questions like "how much have I spent" or "show my spending". For "where's my order" /
+    order-tracking questions, use get_order_history instead so order cards render.
+
+    user_id: the numeric SmartCart user ID."""
+    return st.get_spending_summary(user_id)
+
+
+@mcp.tool()
 def search_products(category: Optional[str] = None, max_price: Optional[float] = None,
                      query: Optional[str] = None, limit: int = 4,
                      newest_first: bool = False) -> str:

@@ -4,6 +4,11 @@ on:
     branches: [ "main", "develop" ]
   pull_request:
     branches: [ "main", "develop" ]
+
+env:
+  AWS_REGION: us-east-1       # must match terraform/terraform.tfvars aws_region
+  EKS_CLUSTER_NAME: smartcart-eks # must match terraform/terraform.tfvars cluster_name
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -93,3 +98,172 @@ jobs:
         with:
           sarif_file: trivy-ai-service-results.sarif
           category: trivy-ai-service
+
+  # The frontend lives in a separate repo (thihapnaing/smartcart-web, public)
+  # rather than this one, so it's checked out explicitly here and in
+  # push-images below - jobs don't share a workspace, and this workflow only
+  # auto-checks-out the repo it lives in otherwise.
+  scan-frontend-image:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout frontend repo
+        uses: actions/checkout@v4
+        with:
+          repository: thihapnaing/smartcart-web
+          path: smartcart-web
+          token: '' # empty token = anonymous clone, works since the repo is public
+
+      - name: Build frontend image
+        run: docker build -t smartcart-frontend:${{ github.sha }} ./smartcart-web
+
+      - name: Scan frontend image with Trivy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: 'image'
+          image-ref: smartcart-frontend:${{ github.sha }}
+          format: sarif
+          output: trivy-frontend-results.sarif
+          severity: CRITICAL,HIGH
+          # Without this, trivy-action silently discards the severity filter
+          # above for SARIF output and scans/fails on ALL severities instead
+          # (see aquasecurity/trivy-action's entrypoint.sh SARIF handling).
+          limit-severities-for-sarif: 'true'
+          exit-code: '1'
+          # No trivyignores here - smartcart-web doesn't have a .trivyignore
+          # yet. Add one there and reference it here if/when needed.
+
+      - name: Upload results to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-frontend-results.sarif
+          category: trivy-frontend
+
+  push-images:
+    needs: [ scan-backend-image, scan-ai-service-image, scan-frontend-image ]
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # required to assume the AWS role via OIDC
+      contents: read
+    outputs:
+      backend-image: ${{ steps.tags.outputs.backend-image }}
+      ai-service-image: ${{ steps.tags.outputs.ai-service-image }}
+      frontend-image: ${{ steps.tags.outputs.frontend-image }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Checkout frontend repo
+        uses: actions/checkout@v4
+        with:
+          repository: thihapnaing/smartcart-web
+          path: smartcart-web
+          token: '' # empty token = anonymous clone, works since the repo is public
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Rebuilt here rather than reused from the scan jobs above - passing a
+      # multi-hundred-MB image between jobs as an artifact is slower and
+      # more fiddly than a second `docker build`, and Docker's layer cache
+      # keeps this cheap anyway.
+      - name: Build and push backend image
+        run: |
+          docker build -t ${{ steps.ecr-login.outputs.registry }}/smartcart-backend:${{ github.sha }} .
+          docker push ${{ steps.ecr-login.outputs.registry }}/smartcart-backend:${{ github.sha }}
+
+      - name: Build and push AI service image
+        run: |
+          docker build -t ${{ steps.ecr-login.outputs.registry }}/smartcart-ai-service:${{ github.sha }} ./smartcart-ai-service
+          docker push ${{ steps.ecr-login.outputs.registry }}/smartcart-ai-service:${{ github.sha }}
+
+      # Tagged with this repo's SHA (not smartcart-web's own) so all 3
+      # images from one pipeline run share a single traceable tag, even
+      # though the frontend source technically comes from a different repo.
+      - name: Build and push frontend image
+        run: |
+          docker build -t ${{ steps.ecr-login.outputs.registry }}/smartcart-frontend:${{ github.sha }} ./smartcart-web
+          docker push ${{ steps.ecr-login.outputs.registry }}/smartcart-frontend:${{ github.sha }}
+
+      - name: Record image tags for the deploy job
+        id: tags
+        run: |
+          echo "backend-image=${{ steps.ecr-login.outputs.registry }}/smartcart-backend:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          echo "ai-service-image=${{ steps.ecr-login.outputs.registry }}/smartcart-ai-service:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          echo "frontend-image=${{ steps.ecr-login.outputs.registry }}/smartcart-frontend:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: push-images
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+      # Idempotent create-or-update: builds the Secret locally and applies
+      # it, rather than `kubectl create` which would fail with "already
+      # exists" on every run after the first.
+      - name: Create/update app secrets in cluster
+        run: |
+          kubectl create secret generic smartcart-secrets \
+            --from-literal=JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+            --from-literal=MYSQL_ROOT_PASSWORD="${{ secrets.MYSQL_ROOT_PASSWORD }}" \
+            --from-literal=MYSQL_PASSWORD="${{ secrets.MYSQL_PASSWORD }}" \
+            --from-literal=OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+            --from-literal=OPENROUTER_API_KEY="${{ secrets.OPENROUTER_API_KEY }}" \
+            --from-literal=CLOUDINARY_CLOUD_NAME="${{ secrets.CLOUDINARY_CLOUD_NAME }}" \
+            --from-literal=CLOUDINARY_API_KEY="${{ secrets.CLOUDINARY_API_KEY }}" \
+            --from-literal=CLOUDINARY_API_SECRET="${{ secrets.CLOUDINARY_API_SECRET }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      # ingress.yaml is excluded - it's Minikube-only (relies on that
+      # cluster's nginx ingress addon, which this EKS cluster doesn't have).
+      - name: Apply manifests
+        run: |
+          kubectl apply -f k8s/mysql-deployment.yaml
+          kubectl apply -f k8s/backend-deployment.yaml
+          kubectl apply -f k8s/ai-service-deployment.yaml
+          kubectl apply -f k8s/frontend-deployment.yaml
+
+      - name: Point deployments at the images just pushed
+        run: |
+          kubectl set image deployment/backend backend=${{ needs.push-images.outputs.backend-image }}
+          kubectl set image deployment/smartcart-ai-service smartcart-ai-service=${{ needs.push-images.outputs.ai-service-image }}
+          kubectl set image deployment/frontend frontend=${{ needs.push-images.outputs.frontend-image }}
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/backend --timeout=180s
+          kubectl rollout status deployment/smartcart-ai-service --timeout=180s
+          kubectl rollout status deployment/frontend --timeout=180s
+
+      - name: Show frontend LoadBalancer address
+        run: |
+          kubectl get service frontend -o jsonpath='Frontend URL: http://{.status.loadBalancer.ingress[0].hostname}{"\n"}'

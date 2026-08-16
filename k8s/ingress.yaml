@@ -1,0 +1,70 @@
+# Simple host-based Ingress for local testing via the Minikube nginx
+# ingress addon. Routes / to the frontend and /api to the backend, on one
+# host, so you don't have to remember separate NodePort URLs/ports.
+#
+# One-time setup:
+#   minikube addons enable ingress
+#   echo "$(minikube ip) smartcart.local" | sudo tee -a /etc/hosts
+#
+# Then browse to http://smartcart.local
+#
+# The frontend's production build calls a relative /api path (see
+# environment.prod.ts, swapped in via angular.json's fileReplacements) so
+# this Ingress's /api rule is what the running app actually hits, not just
+# curl.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: smartcart-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: smartcart.local
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+---
+# Separate Ingress object for the AI service, since it needs its own
+# rewrite-target annotation (applies per-Ingress-resource in nginx) - the AI
+# service's FastAPI routes are also under /api (e.g. /api/health), same
+# prefix the backend uses above, so it can't share that path on this host.
+# /ai/... here gets rewritten to /... before being forwarded, so
+# smartcart.local/ai/api/health reaches the pod as /api/health.
+#
+# Like the backend's /api rule, nothing in the deployed app calls this
+# through Ingress today (the frontend never talks to the AI service
+# directly - only backend -> smartcart-ai-service internally) - it's here
+# so the AI service is reachable/testable directly, e.g.:
+#   curl http://smartcart.local/ai/api/health
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: smartcart-ai-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: smartcart.local
+      http:
+        paths:
+          - path: /ai(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: smartcart-ai-service
+                port:
+                  number: 8001

@@ -1,0 +1,61 @@
+# SmartCart AI service, deployed to the school-project EKS cluster (see
+# terraform/). The image below is a placeholder - the CI deploy job runs
+# `kubectl set image` right after `kubectl apply` to point this at the real
+# ECR image + git-SHA tag it just pushed (see .github/workflows/backend.yml).
+#
+# Reviving Minikube local testing: swap the image back to
+# `ai-service-app:latest` with `imagePullPolicy: Never`, same as before.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smartcart-ai-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: smartcart-ai-service
+  template:
+    metadata:
+      labels:
+        app: smartcart-ai-service
+    spec:
+      containers:
+        - name: smartcart-ai-service
+          image: PLACEHOLDER-ECR-REGISTRY/smartcart-ai-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8001
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+          env:
+            # Reach the backend by its Service name, same as docker-compose.
+            - name: SMARTCART_BACKEND_URL
+              value: "http://backend:8080"
+            - name: SPRING_BOOT_URL
+              value: "http://backend:8080"
+            # From the "smartcart-secrets" Secret, created by the CI deploy
+            # job from GitHub Actions repo secrets - never committed here.
+            # See .github/workflows/backend.yml.
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: smartcart-secrets
+                  key: OPENAI_API_KEY
+            - name: OPENROUTER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: smartcart-secrets
+                  key: OPENROUTER_API_KEY
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smartcart-ai-service
+spec:
+  selector:
+    app: smartcart-ai-service
+  ports:
+    - port: 8001
+      targetPort: 8001

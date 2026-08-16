@@ -115,7 +115,10 @@ jobs:
         with:
           repository: thihapnaing/smartcart-web
           path: smartcart-web
-          token: '' # empty token = anonymous clone, works since the repo is public
+          # No token override - defaults to github.token. That's scoped to
+          # this (backend) repo, but works fine here anyway since
+          # smartcart-web is public and public clones don't require the
+          # token to match the repo being cloned.
 
       - name: Build frontend image
         run: docker build -t smartcart-frontend:${{ github.sha }} ./smartcart-web
@@ -163,7 +166,10 @@ jobs:
         with:
           repository: thihapnaing/smartcart-web
           path: smartcart-web
-          token: '' # empty token = anonymous clone, works since the repo is public
+          # No token override - defaults to github.token. That's scoped to
+          # this (backend) repo, but works fine here anyway since
+          # smartcart-web is public and public clones don't require the
+          # token to match the repo being cloned.
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4

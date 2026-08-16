@@ -17,6 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -76,7 +78,7 @@ public class AdminMerchantService {
 
     @Transactional
     public AdminMerchantSummaryDto updateMerchantStatus(Long merchantId, UserStatus status) {
-        currentUserProvider.getCurrentAdmin();
+        User admin = currentUserProvider.getCurrentAdmin();
 
         User merchant = findMerchant(merchantId);
         UserStatus current = merchant.getStatus();
@@ -90,6 +92,9 @@ public class AdminMerchantService {
         }
 
         merchant.setStatus(status);
+        // Who suspended/reinstated this merchant and when - see User.lastModifiedByAdmin's javadoc.
+        merchant.setLastModifiedByAdmin(admin);
+        merchant.setLastModifiedAt(LocalDateTime.now(ZoneId.of("Asia/Singapore")));
         User saved = userRepository.save(merchant);
 
         return toSummaryDto(saved);
@@ -126,6 +131,9 @@ public class AdminMerchantService {
                 .listingCount(listingCount)
                 .orderCount(orderCount)
                 .revenue(revenue)
+                .lastModifiedByAdminUsername(
+                        merchant.getLastModifiedByAdmin() != null ? merchant.getLastModifiedByAdmin().getUsername() : null)
+                .lastModifiedAt(merchant.getLastModifiedAt())
                 .build();
     }
 
@@ -148,6 +156,9 @@ public class AdminMerchantService {
                 .status(merchant.getStatus() != null ? merchant.getStatus().name() : null)
                 .createdAt(merchant.getCreatedAt())
                 .listingCount(listingCount)
+                .lastModifiedByAdminUsername(
+                        merchant.getLastModifiedByAdmin() != null ? merchant.getLastModifiedByAdmin().getUsername() : null)
+                .lastModifiedAt(merchant.getLastModifiedAt())
                 .build();
     }
 }

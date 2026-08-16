@@ -121,6 +121,48 @@ class AdminMerchantControllerTest {
     }
 
     @Test
+    void updateMerchantStatus_validRequest_responseExposesWhoMadeTheChange() throws Exception {
+        AdminMerchantSummaryDto dto = AdminMerchantSummaryDto.builder()
+                .id(1L)
+                .username("acme")
+                .email("acme@smartcart.demo")
+                .status("SUSPENDED")
+                .createdAt(LocalDateTime.of(2026, Month.AUGUST, 1, 9, 0))
+                .listingCount(3)
+                .lastModifiedByAdminUsername("grace_admin")
+                .lastModifiedAt(LocalDateTime.now())
+                .build();
+        when(adminMerchantService.updateMerchantStatus(1L, UserStatus.SUSPENDED)).thenReturn(dto);
+
+        mockMvc.perform(patch("/api/admin/merchants/1/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"SUSPENDED\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lastModifiedByAdminUsername").value("grace_admin"));
+    }
+
+    @Test
+    void getMerchantDetail_responseExposesWhoMadeTheChange() throws Exception {
+        AdminMerchantDetailDto dto = AdminMerchantDetailDto.builder()
+                .id(1L)
+                .username("acme")
+                .email("acme@smartcart.demo")
+                .status("SUSPENDED")
+                .createdAt(LocalDateTime.of(2026, Month.AUGUST, 1, 9, 0))
+                .listingCount(3)
+                .orderCount(7)
+                .revenue(new BigDecimal("199.50"))
+                .lastModifiedByAdminUsername("grace_admin")
+                .lastModifiedAt(LocalDateTime.now())
+                .build();
+        when(adminMerchantService.getMerchantDetail(1L)).thenReturn(dto);
+
+        mockMvc.perform(get("/api/admin/merchants/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lastModifiedByAdminUsername").value("grace_admin"));
+    }
+
+    @Test
     void getMerchantDetail_notFound_returns404() throws Exception {
         when(adminMerchantService.getMerchantDetail(99L))
                 .thenThrow(new EntityNotFoundException("Merchant not found: 99"));

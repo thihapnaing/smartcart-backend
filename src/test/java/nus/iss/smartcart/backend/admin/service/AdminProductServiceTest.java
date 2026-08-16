@@ -7,14 +7,17 @@ import nus.iss.smartcart.backend.admin.dto.AdminProductSummaryDto;
 import nus.iss.smartcart.backend.model.Category;
 import nus.iss.smartcart.backend.model.Product;
 import nus.iss.smartcart.backend.model.ProductStatus;
+import nus.iss.smartcart.backend.model.User;
 import nus.iss.smartcart.backend.repository.CartItemRepository;
 import nus.iss.smartcart.backend.repository.ProductRepository;
 import nus.iss.smartcart.backend.security.CurrentUserProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import java.time.LocalDateTime;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -108,6 +111,10 @@ class AdminProductServiceTest {
         Category category = mock(Category.class);
         when(category.getName()).thenReturn("Tops");
 
+        User admin = mock(User.class);
+        when(admin.getUsername()).thenReturn("grace_admin");
+        when(currentUserProvider.getCurrentAdmin()).thenReturn(admin);
+
         Product product = mock(Product.class);
         when(product.getId()).thenReturn(1L);
         when(product.getName()).thenReturn("Classic Crew Tee");
@@ -116,6 +123,7 @@ class AdminProductServiceTest {
         when(product.getCategory()).thenReturn(category);
         when(product.getShopName()).thenReturn("SmartCart Official");
         when(product.getStatus()).thenReturn(ProductStatus.INACTIVE);
+        when(product.getLastModifiedByAdmin()).thenReturn(admin);
 
         when(productRepository.findById(1L)).thenReturn(Optional.of(product));
         when(productRepository.save(product)).thenReturn(product);
@@ -127,12 +135,23 @@ class AdminProductServiceTest {
         verify(product).setAdminLocked(true);
         verify(cartItemRepository).deleteByProductVariant_Product_Id(1L);
         assertEquals("INACTIVE", result.getStatus());
+
+        // Who deactivated this listing (and when) must be recorded, not just that *an* admin
+        // was authenticated - that's the whole point of this field.
+        verify(product).setLastModifiedByAdmin(admin);
+        ArgumentCaptor<LocalDateTime> timestampCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
+        verify(product).setLastModifiedAt(timestampCaptor.capture());
+        assertNotNull(timestampCaptor.getValue());
+        assertEquals("grace_admin", result.getLastModifiedByAdminUsername());
     }
 
     @Test
     void updateProductStatus_toActive_doesNotTouchCartItems() {
         Category category = mock(Category.class);
         when(category.getName()).thenReturn("Tops");
+
+        User admin = mock(User.class);
+        when(currentUserProvider.getCurrentAdmin()).thenReturn(admin);
 
         Product product = mock(Product.class);
         when(product.getId()).thenReturn(1L);
@@ -152,5 +171,9 @@ class AdminProductServiceTest {
         verify(product).setAdminLocked(false);
         verify(cartItemRepository, never()).deleteByProductVariant_Product_Id(anyLong());
         assertEquals("ACTIVE", result.getStatus());
+
+        // Reactivating is a status change too - still recorded, same as deactivating.
+        verify(product).setLastModifiedByAdmin(admin);
+        verify(product).setLastModifiedAt(any(LocalDateTime.class));
     }
 }

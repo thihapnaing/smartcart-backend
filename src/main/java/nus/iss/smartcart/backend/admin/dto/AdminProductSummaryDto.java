@@ -10,7 +10,8 @@ import java.time.LocalDateTime;
  *
  * Admin-only product listing row - includes status (unlike ProductSearchResult, which is
  * customer-facing and only ever shows ACTIVE products) so the moderation screen can show
- * every listing regardless of state. */
+ * every listing regardless of state. lastModifiedByAdminUsername/lastModifiedAt are null until
+ * the first admin-driven status change - see Product.lastModifiedByAdmin. */
 @Getter
 @Builder
 public class AdminProductSummaryDto {
@@ -24,4 +25,6 @@ public class AdminProductSummaryDto {
     private String status;
     private LocalDateTime createdAt;
     private Long merchantId;
+    private String lastModifiedByAdminUsername;
+    private LocalDateTime lastModifiedAt;
 }

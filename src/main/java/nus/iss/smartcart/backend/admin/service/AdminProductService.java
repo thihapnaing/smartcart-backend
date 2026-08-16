@@ -4,12 +4,15 @@ import jakarta.persistence.EntityNotFoundException;
 import nus.iss.smartcart.backend.admin.dto.AdminProductSummaryDto;
 import nus.iss.smartcart.backend.model.Product;
 import nus.iss.smartcart.backend.model.ProductStatus;
+import nus.iss.smartcart.backend.model.User;
 import nus.iss.smartcart.backend.repository.CartItemRepository;
 import nus.iss.smartcart.backend.repository.ProductRepository;
 import nus.iss.smartcart.backend.security.CurrentUserProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 // AUTHOR: Htet Nandar(Grace)
@@ -37,11 +40,14 @@ public class AdminProductService {
 
     @Transactional
     public AdminProductSummaryDto updateProductStatus(Long productId, ProductStatus status) {
-        currentUserProvider.getCurrentAdmin();
+        User admin = currentUserProvider.getCurrentAdmin();
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
         product.setStatus(status);
         product.setAdminLocked(status == ProductStatus.INACTIVE);
+        // Who made this change and when - see Product.lastModifiedByAdmin's javadoc.
+        product.setLastModifiedByAdmin(admin);
+        product.setLastModifiedAt(LocalDateTime.now(ZoneId.of("Asia/Singapore")));
         Product saved = productRepository.save(product);
 
         // Deactivating must pull the product out of every cart it's sitting in right now -
@@ -65,6 +71,9 @@ public class AdminProductService {
                 .status(product.getStatus() != null ? product.getStatus().name() : null)
                 .createdAt(product.getCreatedAt())
                 .merchantId(product.getMerchant() != null ? product.getMerchant().getId() : null)
+                .lastModifiedByAdminUsername(
+                        product.getLastModifiedByAdmin() != null ? product.getLastModifiedByAdmin().getUsername() : null)
+                .lastModifiedAt(product.getLastModifiedAt())
                 .build();
     }
 }

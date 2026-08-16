@@ -178,6 +178,23 @@ jobs:
           # smartcart-web is public and public clones don't require the
           # token to match the repo being cloned.
 
+      # TEMPORARY debug step - decodes the actual OIDC token's claims
+      # (never the token itself) so we can compare them against the IAM
+      # role's trust policy directly. Remove once the AssumeRoleWithOIDC
+      # failure is diagnosed.
+      - name: Debug - decode OIDC token claims
+        run: |
+          ID_TOKEN=$(curl -sSL -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r '.value')
+          PAYLOAD=$(echo "$ID_TOKEN" | cut -d '.' -f2)
+          python3 -c "
+          import base64, json
+          p = '$PAYLOAD'
+          p += '=' * (-len(p) % 4)
+          d = json.loads(base64.urlsafe_b64decode(p))
+          for k in ('iss', 'aud', 'sub', 'repository', 'ref', 'event_name'):
+              print(f'{k}: {d.get(k)!r}')
+          "
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:

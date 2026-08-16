@@ -254,6 +254,7 @@ jobs:
             --from-literal=CLOUDINARY_CLOUD_NAME="${{ secrets.CLOUDINARY_CLOUD_NAME }}" \
             --from-literal=CLOUDINARY_API_KEY="${{ secrets.CLOUDINARY_API_KEY }}" \
             --from-literal=CLOUDINARY_API_SECRET="${{ secrets.CLOUDINARY_API_SECRET }}" \
+            --from-literal=TAVILY_API_KEY="${{ secrets.TAVILY_API_KEY }}" \
             --dry-run=client -o yaml | kubectl apply -f -
 
       # ingress.yaml is excluded - it's Minikube-only (relies on that

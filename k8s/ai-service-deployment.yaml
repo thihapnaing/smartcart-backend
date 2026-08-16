@@ -48,6 +48,14 @@ spec:
                 secretKeyRef:
                   name: smartcart-secrets
                   key: OPENROUTER_API_KEY
+            # Required at import time by routers/trend_router.py
+            # (TavilySearchResults) - the whole service crashes on startup
+            # without it, not just trend search.
+            - name: TAVILY_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: smartcart-secrets
+                  key: TAVILY_API_KEY
 ---
 apiVersion: v1
 kind: Service

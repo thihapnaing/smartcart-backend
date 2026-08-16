@@ -45,15 +45,25 @@ public class AuthController {
     }
 
     @PostMapping("/merchant/register")
-    public ResponseEntity<LoginResponse> registerMerchant(
-            @RequestBody RegisterRequest request) {
+    public ResponseEntity<?> registerMerchant(
+            @RequestBody RegisterRequest request
+    ) {
 
-        LoginResponse response =
-                authService.registerMerchant(request);
+        try {
 
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(response);
+            LoginResponse response =
+                    authService.registerMerchant(request);
+
+            return ResponseEntity
+                    .status(HttpStatus.CREATED)
+                    .body(response);
+
+        } catch (IllegalArgumentException e) {
+
+            return ResponseEntity
+                    .badRequest()
+                    .body(e.getMessage());
+        }
     }
 
     @PostMapping("/login")

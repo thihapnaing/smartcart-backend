@@ -143,7 +143,12 @@ class CartServiceTest {
         when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(cart));
 
         ProductVariant productVariant = mock(ProductVariant.class);
-        when(productVariant.getProduct()).thenReturn(activeProduct());
+        // activeProduct() is fetched into a local first, not inlined as thenReturn()'s argument
+        // - it runs its own when()/thenReturn() cycle internally, and interleaving that inside
+        // this when(...).thenReturn(...) call leaves Mockito's stubbing state mid-flight
+        // (UnfinishedStubbing on the outer call).
+        Product product = activeProduct();
+        when(productVariant.getProduct()).thenReturn(product);
         when(productVariant.getStock()).thenReturn(100);
         when(productVariantRepository.findById(1L)).thenReturn(Optional.of(productVariant));
         when(cartItemRepository.findByCartIdAndProductVariantId(cart.getId(), 1L))
@@ -162,7 +167,8 @@ class CartServiceTest {
         when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(cart));
 
         ProductVariant productVariant = mock(ProductVariant.class);
-        when(productVariant.getProduct()).thenReturn(activeProduct());
+        Product product = activeProduct();
+        when(productVariant.getProduct()).thenReturn(product);
         when(productVariant.getStock()).thenReturn(100);
         when(productVariantRepository.findById(1L)).thenReturn(Optional.of(productVariant));
 
@@ -185,7 +191,8 @@ class CartServiceTest {
         when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(cart));
 
         ProductVariant productVariant = mock(ProductVariant.class);
-        when(productVariant.getProduct()).thenReturn(activeProduct());
+        Product product = activeProduct();
+        when(productVariant.getProduct()).thenReturn(product);
         when(productVariant.getStock()).thenReturn(2);
         when(productVariantRepository.findById(1L)).thenReturn(Optional.of(productVariant));
 
@@ -206,7 +213,8 @@ class CartServiceTest {
         when(cartRepository.save(any(Cart.class))).thenReturn(cart);
 
         ProductVariant productVariant = mock(ProductVariant.class);
-        when(productVariant.getProduct()).thenReturn(activeProduct());
+        Product product = activeProduct();
+        when(productVariant.getProduct()).thenReturn(product);
         when(productVariant.getStock()).thenReturn(10);
         when(productVariantRepository.findById(1L)).thenReturn(Optional.of(productVariant));
 
@@ -225,7 +233,8 @@ class CartServiceTest {
         when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(cart));
 
         ProductVariant productVariant = mock(ProductVariant.class);
-        when(productVariant.getProduct()).thenReturn(activeProduct());
+        Product product = activeProduct();
+        when(productVariant.getProduct()).thenReturn(product);
         when(productVariant.getStock()).thenReturn(2);
 
         when(productVariantRepository.findById(1L)).thenReturn(Optional.of(productVariant));

@@ -1,61 +1,40 @@
 package nus.iss.smartcart.backend.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-
+import nus.iss.smartcart.backend.dto.ChangePasswordRequest;
 import nus.iss.smartcart.backend.dto.LoginRequest;
 import nus.iss.smartcart.backend.dto.LoginResponse;
 import nus.iss.smartcart.backend.dto.RegisterRequest;
+import nus.iss.smartcart.backend.exception.ForbiddenException;
+import nus.iss.smartcart.backend.repository.UserRepository;
+import nus.iss.smartcart.backend.security.CustomUserDetailsService;
+import nus.iss.smartcart.backend.security.JwtService;
 import nus.iss.smartcart.backend.service.AuthService;
-
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.mockito.ArgumentMatchers.any;
-
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-// UPDATED BY JUNIOR
-
-@ExtendWith(MockitoExtension.class)
+@WebMvcTest(AuthController.class)
 class AuthControllerTest {
-    @Mock
-    private AuthService authService;
 
-    @InjectMocks
-    private AuthController authController;
-
+    @Autowired
     private MockMvc mockMvc;
-    private ObjectMapper objectMapper;
 
-    @BeforeEach
-    void setUp() {
+    @MockitoBean
+    private AuthService authService;
+    @MockitoBean private JwtService jwtService;
+    @MockitoBean private CustomUserDetailsService customUserDetailsService;
+    @MockitoBean private UserRepository userRepository;
 
-        mockMvc =
-                MockMvcBuilders
-                        .standaloneSetup(
-                                authController
-                        )
-                        .build();
-
-        objectMapper =
-                new ObjectMapper();
-    }
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
     void register_validRequest_returnsCreatedWithLoginResponse() throws Exception {
@@ -65,7 +44,7 @@ class AuthControllerTest {
         request.setPassword("password123");
 
         LoginResponse response =
-                new LoginResponse("fake-jwt-token", 1L, "jane", "jane@example.com", "CUSTOMER");
+                new LoginResponse("fake-jwt-token", 1L, "jane", "jane@example.com", "CUSTOMER", false);
         when(authService.register(any(RegisterRequest.class))).thenReturn(response);
 
         mockMvc.perform(post("/api/auth/register")
@@ -101,7 +80,7 @@ class AuthControllerTest {
         request.setPassword("password123");
 
         LoginResponse response =
-                new LoginResponse("fake-jwt-token", 1L, "jane", "jane@example.com", "CUSTOMER");
+                new LoginResponse("fake-jwt-token", 1L, "jane", "jane@example.com", "CUSTOMER", false);
         when(authService.login(any(LoginRequest.class))).thenReturn(response);
 
         mockMvc.perform(post("/api/auth/login")
@@ -247,7 +226,8 @@ class AuthControllerTest {
                         2L,
                         "merchant01",
                         "merchant@example.com",
-                        "MERCHANT"
+                        "MERCHANT",
+                        false
                 );
 
 
@@ -330,7 +310,8 @@ class AuthControllerTest {
                         4L,
                         "merchant01",
                         "merchant@smartcart.com.sg",
-                        "MERCHANT"
+                        "MERCHANT",
+                        false
                 );
 
 
@@ -521,5 +502,63 @@ class AuthControllerTest {
                                         "Logout successful"
                                 )
                 );
+    }
+
+    // ── change-password ────────────────────────────────────────────────
+
+    @Test
+    void changePassword_validRequest_returnsOkAndCallsService() throws Exception {
+        ChangePasswordRequest request = new ChangePasswordRequest();
+        request.setNewPassword("newpassword123");
+        request.setConfirmPassword("newpassword123");
+
+        doNothing().when(authService).changePassword(any(ChangePasswordRequest.class));
+
+        mockMvc.perform(post("/api/auth/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Password changed successfully"));
+
+        verify(authService).changePassword(any(ChangePasswordRequest.class));
+    }
+
+    @Test
+    void changePassword_passwordsDoNotMatch_returnsBadRequestWithMessage() throws Exception {
+        ChangePasswordRequest request = new ChangePasswordRequest();
+        request.setNewPassword("newpassword123");
+        request.setConfirmPassword("somethingElse123");
+
+        doThrow(new IllegalArgumentException("Passwords do not match"))
+                .when(authService).changePassword(any(ChangePasswordRequest.class));
+
+        mockMvc.perform(post("/api/auth/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("Passwords do not match"));
+    }
+
+    @Test
+    void changePassword_newPasswordTooShort_returnsBadRequest() throws Exception {
+        mockMvc.perform(post("/api/auth/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"newPassword\":\"abc\",\"confirmPassword\":\"abc\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void changePassword_callerNotAuthenticated_returnsForbidden() throws Exception {
+        ChangePasswordRequest request = new ChangePasswordRequest();
+        request.setNewPassword("newpassword123");
+        request.setConfirmPassword("newpassword123");
+
+        doThrow(new ForbiddenException("Not authenticated."))
+                .when(authService).changePassword(any(ChangePasswordRequest.class));
+
+        mockMvc.perform(post("/api/auth/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
     }
 }

@@ -1,17 +1,23 @@
 package nus.iss.smartcart.backend.service;
 
+import nus.iss.smartcart.backend.dto.ChangePasswordRequest;
 import nus.iss.smartcart.backend.dto.LoginRequest;
 import nus.iss.smartcart.backend.dto.LoginResponse;
 import nus.iss.smartcart.backend.dto.RegisterRequest;
+import nus.iss.smartcart.backend.exception.ForbiddenException;
 import nus.iss.smartcart.backend.model.User;
 import nus.iss.smartcart.backend.model.UserRole;
 import nus.iss.smartcart.backend.model.UserStatus;
 import nus.iss.smartcart.backend.repository.UserRepository;
+import nus.iss.smartcart.backend.security.CurrentUserProvider;
 import nus.iss.smartcart.backend.security.JwtService;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
@@ -21,12 +27,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,6 +43,7 @@ class AuthServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private JwtService jwtService;
+    @Mock private CurrentUserProvider currentUserProvider;
 
     @InjectMocks private AuthService authService;
 
@@ -133,6 +142,7 @@ class AuthServiceTest {
         assertEquals(1L, response.getUserId());
         assertEquals("jane", response.getUsername());
         assertEquals("CUSTOMER", response.getRole());
+        assertFalse(response.isMustChangePassword());
     }
 
     // ── login ───────────────────────────────────────────────────────────
@@ -196,6 +206,76 @@ class AuthServiceTest {
         assertEquals("fake-jwt-token", response.getToken());
         assertEquals(2L, response.getUserId());
         assertEquals("MERCHANT", response.getRole());
+        assertFalse(response.isMustChangePassword());
+    }
+
+    @Test
+    void login_accountStillOnItsTemporaryPassword_flagsMustChangePasswordInResponse() {
+        User user = new User();
+        user.setId(4L);
+        user.setUsername("newadmin");
+        user.setEmail("newadmin@smartcart.demo");
+        user.setPassword("hashed-password");
+        user.setRole(UserRole.ADMIN);
+        user.setStatus(UserStatus.ACTIVE);
+        user.setMustChangePassword(true);
+        LoginRequest request = new LoginRequest();
+        request.setEmail("newadmin@smartcart.demo");
+        request.setPassword("123456");
+        when(userRepository.findByEmail("newadmin@smartcart.demo")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("123456", "hashed-password")).thenReturn(true);
+        when(jwtService.generateToken(user)).thenReturn("fake-jwt-token");
+
+        LoginResponse response = authService.login(request);
+
+        assertTrue(response.isMustChangePassword());
+    }
+
+    // ── changePassword ─────────────────────────────────────────────────
+
+    @Test
+    void changePassword_notAuthenticated_throwsForbiddenExceptionBeforeTouchingRepositories() {
+        ChangePasswordRequest request = new ChangePasswordRequest();
+        request.setNewPassword("newpassword123");
+        request.setConfirmPassword("newpassword123");
+        when(currentUserProvider.getCurrentUser()).thenThrow(new ForbiddenException("Not authenticated."));
+
+        assertThrows(ForbiddenException.class, () -> authService.changePassword(request));
+        verifyNoInteractions(userRepository, passwordEncoder);
+    }
+
+    @Test
+    void changePassword_confirmPasswordDoesNotMatch_throwsIllegalArgumentException() {
+        User user = new User();
+        user.setEmail("newadmin@smartcart.demo");
+        when(currentUserProvider.getCurrentUser()).thenReturn(user);
+
+        ChangePasswordRequest request = new ChangePasswordRequest();
+        request.setNewPassword("newpassword123");
+        request.setConfirmPassword("somethingElse123");
+
+        assertThrows(IllegalArgumentException.class, () -> authService.changePassword(request));
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(passwordEncoder);
+    }
+
+    @Test
+    void changePassword_validRequest_savesEncodedPasswordAndClearsMustChangePasswordFlag() {
+        User user = new User();
+        user.setEmail("newadmin@smartcart.demo");
+        user.setMustChangePassword(true);
+        when(currentUserProvider.getCurrentUser()).thenReturn(user);
+        when(passwordEncoder.encode("newpassword123")).thenReturn("new-hashed-password");
+
+        ChangePasswordRequest request = new ChangePasswordRequest();
+        request.setNewPassword("newpassword123");
+        request.setConfirmPassword("newpassword123");
+
+        authService.changePassword(request);
+
+        assertEquals("new-hashed-password", user.getPassword());
+        assertEquals(Boolean.FALSE, user.getMustChangePassword());
+        verify(userRepository).save(user);
     }
 
     //MERCHANT
@@ -283,6 +363,9 @@ class AuthServiceTest {
         );
 
 
+        assertFalse(response.isMustChangePassword());
+
+
         verify(userRepository)
                 .existsByEmail(
                         "merchant@smartcart.com"
@@ -305,40 +388,31 @@ class AuthServiceTest {
                 .generateToken(merchantUser);
     }
 
-    @Test
-    void registerMerchant_passwordRequired() {
-
-        RegisterRequest request =
-                new RegisterRequest();
-
-        request.setUsername("merchant01");
-        request.setEmail("merchant@smartcart.com");
-        request.setPassword(null);
-
-
-        IllegalArgumentException exception =
-                assertThrows(
-                        IllegalArgumentException.class,
-                        () ->
-                                authService.registerMerchant(request)
-                );
-
-
-        assertEquals(
-                "Password is required",
-                exception.getMessage()
+    // AUTHOR: Htet Nandar(Grace)
+    // These 5 cases previously existed as 5 near-identical @Test methods (differing only in the
+    // password value and the expected message) - Sonar S5976 flags that shape and asks for a
+    // single parameterized test instead.
+    private static Stream<Arguments> invalidMerchantPasswords() {
+        return Stream.of(
+                Arguments.of(null, "Password is required"),
+                Arguments.of("Mer1", "Password must be at least 6 characters"),
+                Arguments.of("merchant1", "Password must contain at least one uppercase letter"),
+                Arguments.of("MERCHANT1", "Password must contain at least one lowercase letter"),
+                Arguments.of("Merchant", "Password must contain at least one number")
         );
     }
 
-    @Test
-    void registerMerchant_passwordTooShort() {
+    @ParameterizedTest(name = "[{index}] password=\"{0}\" -> \"{1}\"")
+    @MethodSource("invalidMerchantPasswords")
+    void registerMerchant_invalidPassword_throwsIllegalArgumentExceptionWithSpecificMessage(
+            String password, String expectedMessage) {
 
         RegisterRequest request =
                 new RegisterRequest();
 
         request.setUsername("merchant01");
         request.setEmail("merchant@smartcart.com");
-        request.setPassword("Mer1");
+        request.setPassword(password);
 
 
         IllegalArgumentException exception =
@@ -350,82 +424,7 @@ class AuthServiceTest {
 
 
         assertEquals(
-                "Password must be at least 6 characters",
-                exception.getMessage()
-        );
-    }
-
-    @Test
-    void registerMerchant_passwordWithoutUppercase() {
-
-        RegisterRequest request =
-                new RegisterRequest();
-
-        request.setUsername("merchant01");
-        request.setEmail("merchant@smartcart.com");
-        request.setPassword("merchant1");
-
-
-        IllegalArgumentException exception =
-                assertThrows(
-                        IllegalArgumentException.class,
-                        () ->
-                                authService.registerMerchant(request)
-                );
-
-
-        assertEquals(
-                "Password must contain at least one uppercase letter",
-                exception.getMessage()
-        );
-    }
-
-    @Test
-    void registerMerchant_passwordWithoutLowercase() {
-
-        RegisterRequest request =
-                new RegisterRequest();
-
-        request.setUsername("merchant01");
-        request.setEmail("merchant@smartcart.com");
-        request.setPassword("MERCHANT1");
-
-
-        IllegalArgumentException exception =
-                assertThrows(
-                        IllegalArgumentException.class,
-                        () ->
-                                authService.registerMerchant(request)
-                );
-
-
-        assertEquals(
-                "Password must contain at least one lowercase letter",
-                exception.getMessage()
-        );
-    }
-
-    @Test
-    void registerMerchant_passwordWithoutNumber() {
-
-        RegisterRequest request =
-                new RegisterRequest();
-
-        request.setUsername("merchant01");
-        request.setEmail("merchant@smartcart.com");
-        request.setPassword("Merchant");
-
-
-        IllegalArgumentException exception =
-                assertThrows(
-                        IllegalArgumentException.class,
-                        () ->
-                                authService.registerMerchant(request)
-                );
-
-
-        assertEquals(
-                "Password must contain at least one number",
+                expectedMessage,
                 exception.getMessage()
         );
     }

@@ -38,20 +38,21 @@ public class CurrentUserProvider {
         return getCurrentUserWithRole(UserRole.ADMIN);
     }
 
-    private User getCurrentUserWithRole(UserRole expectedRole) {
+    public User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new ForbiddenException("Not authenticated.");
         }
 
-        // JwtAuthenticationFilter authenticates with a UserDetails whose username is the
-        // account's email (see CustomUserDetailsService.loadUserByUsername) - Authentication's
-        // getName() resolves to that username for a UserDetails principal.
         String email = authentication.getName();
 
-        User user = userRepository.findByEmail(email)
+        return userRepository.findByEmail(email)
                 .orElseThrow(() -> new ForbiddenException("Authenticated user no longer exists."));
+    }
+
+    private User getCurrentUserWithRole(UserRole expectedRole) {
+        User user = getCurrentUser();
 
         if (user.getRole() != expectedRole) {
             throw new ForbiddenException("This action requires a " + expectedRole + " account.");

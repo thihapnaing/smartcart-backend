@@ -38,6 +38,9 @@ public class User {
 
     private LocalDateTime createdAt;
 
+    @Column(name = "must_change_password")
+    private Boolean mustChangePassword;
+
     // Explicit zone (matches docker-compose's Singapore timezone) instead of the JVM's
     // implicit default, so createdAt doesn't silently shift if the host's TZ ever differs.
 

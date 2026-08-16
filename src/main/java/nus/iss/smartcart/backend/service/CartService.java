@@ -4,6 +4,7 @@ import nus.iss.smartcart.backend.dto.CartItemDetail;
 import nus.iss.smartcart.backend.dto.CartItemsResponse;
 import nus.iss.smartcart.backend.model.Cart;
 import nus.iss.smartcart.backend.model.CartItem;
+import nus.iss.smartcart.backend.model.ProductStatus;
 import nus.iss.smartcart.backend.model.ProductVariant;
 import nus.iss.smartcart.backend.model.User;
 import nus.iss.smartcart.backend.repository.CartItemRepository;
@@ -48,8 +49,9 @@ public class CartService {
 
         Cart cart = getOrCreateCart(userId);
         ProductVariant productVariant = getProductVariant(productVariantId);
-        Optional<CartItem> existingItem = cartItemRepository.findByCartIdAndProductVariantId(cart.getId(), productVariantId);
+        validateActive(productVariant);
 
+        Optional<CartItem> existingItem = cartItemRepository.findByCartIdAndProductVariantId(cart.getId(), productVariantId);
         validateStock(existingItem, productVariant, qty);
         saveCartItem(cart, productVariant, existingItem, qty);
 
@@ -105,6 +107,18 @@ public class CartService {
         }
     }
 
+    // Author: Htet Nandar (Grace)
+    /**
+     * Blocks adding (or re-adding, e.g. via chat's "Buy again") a product an admin has since
+     * deactivated. Without this, a stale order/cart reference could still be checked out even
+     * though the merchant/admin pulled the listing.
+     */
+    private void validateActive(ProductVariant productVariant) {
+        if (productVariant.getProduct().getStatus() != ProductStatus.ACTIVE) {
+            throw new IllegalArgumentException("This product is no longer available");
+        }
+    }
+
     private void validateStock(Optional<CartItem> existingItem, ProductVariant productVariant, int qty) {
         int requestedTotalQty = existingItem.map(item -> item.getQuantity() + qty).orElse(qty);
         if(requestedTotalQty > productVariant.getStock()) {
@@ -129,7 +143,6 @@ public class CartService {
         BigDecimal subTotal = unitPrice.multiply(BigDecimal.valueOf(item.getQuantity()));
         return CartItemDetail.builder()
                 .cartItemId(item.getId())
-                // Author: Htet Nandar (Grace)
                 .productVariantId(item.getProductVariant().getId())
                 .productName(item.getProductVariant().getProduct().getName())
                 .imageUrl(item.getProductVariant().getProduct().getImageUrl())

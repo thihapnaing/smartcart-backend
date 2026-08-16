@@ -8,6 +8,11 @@ on:
 env:
   AWS_REGION: us-east-1       # must match terraform/terraform.tfvars aws_region
   EKS_CLUSTER_NAME: smartcart-eks # must match terraform/terraform.tfvars cluster_name
+  # Branch of thihapnaing/smartcart-web to build the frontend image from.
+  # Pinned to "thiha" because that's currently the only branch there with a
+  # Dockerfile - main doesn't have one yet. Switch this to "main" (or
+  # "develop") once that repo merges its Dockerfile there.
+  FRONTEND_REPO_REF: thiha
 
 jobs:
   build-and-test:
@@ -114,6 +119,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: thihapnaing/smartcart-web
+          ref: ${{ env.FRONTEND_REPO_REF }}
           path: smartcart-web
           # No token override - defaults to github.token. That's scoped to
           # this (backend) repo, but works fine here anyway since
@@ -165,6 +171,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: thihapnaing/smartcart-web
+          ref: ${{ env.FRONTEND_REPO_REF }}
           path: smartcart-web
           # No token override - defaults to github.token. That's scoped to
           # this (backend) repo, but works fine here anyway since

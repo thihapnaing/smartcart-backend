@@ -43,7 +43,7 @@ INSERT INTO `smartcart_user` (id, username, email, password, role, status, creat
                                                                                  (4, 'admin', 'admin@smartcart.demo', '$2b$10$ZY6WZo/5w8s3aeZPuz2wFOAt6AcLDrxOC.zfhgRTf4udd.KkjHJj6', 'ADMIN', 'ACTIVE', DATE_SUB(NOW(), INTERVAL 200 DAY))
     ON DUPLICATE KEY UPDATE
                          username = VALUES(username), email = VALUES(email), password = VALUES(password),
-                         role = VALUES(role), status = VALUES(status), created_at = VALUES(created_at);
+                         role = VALUES(role), created_at = VALUES(created_at);
 
 INSERT INTO smartcart_user_profile (id, user_id, first_name, last_name, address, postal_code, phone_number, avatar_url, shop_name, interests, preferred_categories, budget) VALUES
                                                                                                                                                                                 (1, 1, 'SmartCart', 'Official', '1 Store Road, Singapore', '018956', '65001234', NULL, 'SmartCart Official', NULL, NULL, NULL),
@@ -112,7 +112,7 @@ INSERT INTO product (id, name, description, price, image_url, gender, color, cat
                          name = VALUES(name), description = VALUES(description), price = VALUES(price),
                          image_url = VALUES(image_url), gender = VALUES(gender), color = VALUES(color),
                          category_id = VALUES(category_id), user_id = VALUES(user_id), shop_name = VALUES(shop_name),
-                         status = VALUES(status), admin_locked = VALUES(admin_locked), created_at = VALUES(created_at);
+                         created_at = VALUES(created_at);
 
 -- -------------------------------------------------------------
 -- Product variants (tops/bottoms: S/M/L, shoes: sizes 39/40/41)

@@ -1,0 +1,10 @@
+# Copy this to terraform.tfvars (gitignored) and fill in your own values.
+
+aws_region   = "us-east-1"
+cluster_name = "smartcart-eks"
+
+# owner/repo - must match this GitHub repo exactly, or the OIDC trust
+# condition in oidc.tf will reject GitHub Actions' assume-role calls.
+github_repo = "thihapnaing/smartcart-backend"
+
+github_deploy_branch = "develop"

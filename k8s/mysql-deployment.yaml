@@ -1,0 +1,68 @@
+# MySQL for local Minikube testing / the school-project EKS deploy. Data
+# lives on an emptyDir - NOT persisted across pod restarts - by deliberate
+# choice: the EKS cluster in terraform/ doesn't install the EBS CSI driver
+# needed for a real PVC to bind, and this app redeploys on every push anyway.
+# If you need data to survive pod restarts, add the aws-ebs-csi-driver EKS
+# add-on + an IRSA role in Terraform, then swap the emptyDir below back for
+# a PersistentVolumeClaim.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-db
+  template:
+    metadata:
+      labels:
+        app: mysql-db
+    spec:
+      containers:
+        - name: mysql-db
+          image: mysql:8.0
+          ports:
+            - containerPort: 3306
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+          env:
+            - name: MYSQL_DATABASE
+              value: "smartcart_db"
+            - name: MYSQL_USER
+              value: "smartcart_user"
+            # From the "smartcart-secrets" Secret, created by the CI deploy
+            # job from GitHub Actions repo secrets - never committed here.
+            # See .github/workflows/backend.yml.
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: smartcart-secrets
+                  key: MYSQL_ROOT_PASSWORD
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: smartcart-secrets
+                  key: MYSQL_PASSWORD
+          volumeMounts:
+            - name: mysql-data
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-data
+          emptyDir: {}
+---
+# Named mysql-db so it matches the hostname the backend already expects
+# (SPRING_DATASOURCE_URL below), same as the mysql-db service name in
+# docker-compose.yml.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-db
+spec:
+  selector:
+    app: mysql-db
+  ports:
+    - port: 3306
+      targetPort: 3306

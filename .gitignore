@@ -73,3 +73,12 @@ build/
 
 # Chroma DB & Vector Store
 smartcart-ai-service/chroma_db/
+
+# ==========================================
+# Terraform
+# ==========================================
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*.tfvars
+terraform/crash.log

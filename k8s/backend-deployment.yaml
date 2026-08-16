@@ -1,0 +1,79 @@
+# SmartCart backend, deployed to the school-project EKS cluster (see
+# terraform/). The image below is a placeholder - the CI deploy job runs
+# `kubectl set image` right after `kubectl apply` to point this at the real
+# ECR image + git-SHA tag it just pushed (see .github/workflows/backend.yml).
+#
+# Reviving Minikube local testing: swap the image back to
+# `backend-app:latest` with `imagePullPolicy: Never`, same as before.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: PLACEHOLDER-ECR-REGISTRY/smartcart-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+          env:
+            # Override the localhost defaults baked into application.properties,
+            # same as docker-compose.yml - reach dependencies by Service name.
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:mysql://mysql-db:3306/smartcart_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true"
+            - name: SPRING_DATASOURCE_USERNAME
+              value: "smartcart_user"
+            # Secrets below come from the "smartcart-secrets" Secret, created
+            # by the CI deploy job from GitHub Actions repo secrets - never
+            # committed here. See .github/workflows/backend.yml.
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: smartcart-secrets
+                  key: MYSQL_PASSWORD
+            - name: AI_PYTHON_SERVICE_BASE_URL
+              value: "http://smartcart-ai-service:8001"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: smartcart-secrets
+                  key: JWT_SECRET
+            - name: CLOUDINARY_CLOUD_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: smartcart-secrets
+                  key: CLOUDINARY_CLOUD_NAME
+            - name: CLOUDINARY_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: smartcart-secrets
+                  key: CLOUDINARY_API_KEY
+            - name: CLOUDINARY_API_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: smartcart-secrets
+                  key: CLOUDINARY_API_SECRET
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+spec:
+  selector:
+    app: backend
+  ports:
+    - port: 8080
+      targetPort: 8080

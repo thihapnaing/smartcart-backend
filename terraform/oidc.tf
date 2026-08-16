@@ -27,13 +27,39 @@ data "aws_iam_policy_document" "github_actions_trust" {
       values   = ["sts.amazonaws.com"]
     }
 
+    # AWS requires every GitHub OIDC trust policy to condition on `sub` (or
+    # `job_workflow_ref`), scoped to something other than "all" - it rejects
+    # UpdateAssumeRolePolicy otherwise. This wildcard exists solely to
+    # satisfy that guardrail; the real restriction is the `repository` and
+    # `ref` conditions below.
+    condition {
+      test     = "StringLike"
+      variable = "token.actions.githubusercontent.com:sub"
+      values   = ["repo:*"]
+    }
+
     # Restricts which caller can assume this role: only workflow runs
     # triggered by a push to `github_deploy_branch` in `github_repo` - not
     # pull requests, not other branches, not other repos.
+    #
+    # Matched on the separate `repository` and `ref` claims rather than the
+    # composite `sub` claim - GitHub now includes immutable owner/repo IDs
+    # alongside the names in `sub` (e.g.
+    # "repo:owner@123/repo@456:ref:refs/heads/develop" instead of
+    # "repo:owner/repo:ref:refs/heads/develop"), which silently breaks any
+    # trust policy written against the classic sub string format. Confirmed
+    # via a debug workflow step that decoded a real token: `repository` and
+    # `ref` come through as plain strings, unaffected by that change.
     condition {
       test     = "StringEquals"
-      variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo}:ref:refs/heads/${var.github_deploy_branch}"]
+      variable = "token.actions.githubusercontent.com:repository"
+      values   = [var.github_repo]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:ref"
+      values   = ["refs/heads/${var.github_deploy_branch}"]
     }
   }
 }

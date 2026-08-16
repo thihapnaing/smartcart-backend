@@ -1,5 +1,7 @@
 package nus.iss.smartcart.backend.controller;
 
+import jakarta.validation.Valid;
+import nus.iss.smartcart.backend.dto.ChangePasswordRequest;
 import nus.iss.smartcart.backend.dto.LoginRequest;
 import nus.iss.smartcart.backend.dto.LoginResponse;
 import nus.iss.smartcart.backend.dto.RegisterRequest;
@@ -9,6 +11,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 //Author: Junior
 
@@ -23,7 +27,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(
+    public ResponseEntity<Object> register(
             @RequestBody RegisterRequest request
     ) {
 
@@ -45,7 +49,7 @@ public class AuthController {
     }
 
     @PostMapping("/merchant/register")
-    public ResponseEntity<?> registerMerchant(
+    public ResponseEntity<Object> registerMerchant(
             @RequestBody RegisterRequest request
     ) {
 
@@ -67,7 +71,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(
+    public ResponseEntity<Object> login(
             @RequestBody LoginRequest request
     ) {
 
@@ -86,8 +90,33 @@ public class AuthController {
         }
     }
 
+    // AUTHOR: Htet Nandar(Grace)
+    // Authenticated (see SecurityConfig - this path is carved out of /api/auth/**'s permitAll
+    // before it, unlike register/login/logout above). Used both for the forced first-login flow
+    // (an admin-invited account's mustChangePassword) and as a normal "change my password" action.
+    @PostMapping("/change-password")
+    public ResponseEntity<Object> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request
+    ) {
+
+        try {
+
+            authService.changePassword(request);
+
+            return ResponseEntity.ok(
+                    Map.of("message", "Password changed successfully")
+            );
+
+        } catch (IllegalArgumentException e) {
+
+            return ResponseEntity
+                    .badRequest()
+                    .body(e.getMessage());
+        }
+    }
+
     @PostMapping("/logout")
-    public ResponseEntity<?> logout() {
+    public ResponseEntity<Object> logout() {
 
         return ResponseEntity.ok(
                 java.util.Map.of(

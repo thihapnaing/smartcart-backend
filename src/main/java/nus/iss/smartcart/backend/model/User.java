@@ -38,6 +38,20 @@ public class User {
 
     private LocalDateTime createdAt;
 
+    @Column(name = "must_change_password")
+    private Boolean mustChangePassword;
+
+    // AUTHOR: Htet Nandar(Grace)
+    // Which admin last changed THIS user's status (e.g. suspending/reinstating a merchant) and
+    // when. Only ever set by AdminMerchantService.updateMerchantStatus() - unrelated to this
+    // row's own role (an admin's own account never sets these on itself).
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "last_modified_by_admin_id")
+    private User lastModifiedByAdmin;
+
+    @Column(name = "last_modified_at")
+    private LocalDateTime lastModifiedAt;
+
     // Explicit zone (matches docker-compose's Singapore timezone) instead of the JVM's
     // implicit default, so createdAt doesn't silently shift if the host's TZ ever differs.
 

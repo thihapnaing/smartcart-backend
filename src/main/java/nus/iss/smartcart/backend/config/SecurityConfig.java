@@ -60,6 +60,13 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
 
+                        // Must come before the /api/auth/** permitAll rule below - Spring
+                        // Security matches in declaration order, and this one specific path
+                        // needs a real JWT (it changes the caller's own password) even though
+                        // everything else under /api/auth/** is intentionally public.
+                        .requestMatchers("/api/auth/change-password")
+                        .authenticated()
+
                         // Authentication
                         .requestMatchers("/api/auth/**")
                         .permitAll()
@@ -85,9 +92,6 @@ public class SecurityConfig {
                         )
                         .permitAll()
 
-                        // Server-to-server calls from the Python AI microservice - it never
-                        // sends a user JWT, so this can't require authentication. Not exposed
-                        // publicly (only reachable from inside the docker network in prod).
                         .requestMatchers("/internal/tools/**")
                         .permitAll()
 

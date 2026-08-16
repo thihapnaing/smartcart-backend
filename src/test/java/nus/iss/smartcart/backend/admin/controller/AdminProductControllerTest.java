@@ -17,6 +17,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.Mockito.when;
@@ -75,6 +76,29 @@ class AdminProductControllerTest {
                         .content("{\"status\":\"INACTIVE\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("INACTIVE"));
+    }
+
+    @Test
+    void updateProductStatus_validRequest_responseExposesWhoMadeTheChange() throws Exception {
+        AdminProductSummaryDto dto = AdminProductSummaryDto.builder()
+                .id(1L)
+                .name("Classic Crew Tee")
+                .price(BigDecimal.valueOf(19.9))
+                .imageUrl("/assets/products/tee-crew.jpg")
+                .categoryName("Tops")
+                .shopName("SmartCart Official")
+                .gender("MEN")
+                .status("INACTIVE")
+                .lastModifiedByAdminUsername("grace_admin")
+                .lastModifiedAt(LocalDateTime.now())
+                .build();
+        when(adminProductService.updateProductStatus(1L, ProductStatus.INACTIVE)).thenReturn(dto);
+
+        mockMvc.perform(patch("/api/admin/products/1/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"INACTIVE\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lastModifiedByAdminUsername").value("grace_admin"));
     }
 
     @Test

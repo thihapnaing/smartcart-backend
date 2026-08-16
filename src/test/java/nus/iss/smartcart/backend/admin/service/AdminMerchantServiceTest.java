@@ -183,6 +183,10 @@ class AdminMerchantServiceTest {
     // separately re-stubbed, which would just be asserting the stub, not the code.
 
     private AdminMerchantSummaryDto assertAllowedTransition(UserStatus from, UserStatus to) {
+        User admin = mock(User.class);
+        lenient().when(admin.getUsername()).thenReturn("grace_admin");
+        when(currentUserProvider.getCurrentAdmin()).thenReturn(admin);
+
         User user = new User();
         user.setId(1L);
         user.setUsername("acme");
@@ -200,6 +204,12 @@ class AdminMerchantServiceTest {
         verify(userRepository).save(user);
         assertEquals(to, user.getStatus());
         assertEquals(to.name(), result.getStatus());
+
+        // Who made this transition (and when) must be recorded on the real User, not just
+        // that *an* admin was authenticated - that's the whole point of this field.
+        assertEquals(admin, user.getLastModifiedByAdmin());
+        assertNotNull(user.getLastModifiedAt());
+        assertEquals("grace_admin", result.getLastModifiedByAdminUsername());
         return result;
     }
 
@@ -282,6 +292,25 @@ class AdminMerchantServiceTest {
         assertEquals(3, result.getOrderCount()); // 101, 102, 104 - not the cancelled 103
         assertEquals(0, new BigDecimal("25.00").compareTo(result.getRevenue()));
         assertEquals(1, result.getListingCount());
+    }
+
+    @Test
+    void getMerchantDetail_reflectsWhoLastChangedTheMerchantsStatus() {
+        User admin = mock(User.class);
+        lenient().when(admin.getUsername()).thenReturn("grace_admin");
+        User active = merchant(1L, "acme", "acme@smartcart.demo", UserStatus.SUSPENDED, LocalDateTime.now());
+        LocalDateTime changedAt = LocalDateTime.now().minusHours(2);
+        when(active.getLastModifiedByAdmin()).thenReturn(admin);
+        when(active.getLastModifiedAt()).thenReturn(changedAt);
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(active));
+        when(productRepository.findByMerchantId(1L)).thenReturn(List.of());
+        when(orderItemRepository.findByProductVariantProductMerchantId(1L)).thenReturn(List.of());
+
+        AdminMerchantDetailDto result = adminMerchantService.getMerchantDetail(1L);
+
+        assertEquals("grace_admin", result.getLastModifiedByAdminUsername());
+        assertEquals(changedAt, result.getLastModifiedAt());
     }
 
     @Test

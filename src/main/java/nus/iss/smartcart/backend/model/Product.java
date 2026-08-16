@@ -61,6 +61,18 @@ public class Product {
     @Column(name = "admin_locked")
     private Boolean adminLocked = false;
 
+    // AUTHOR: Htet Nandar(Grace)
+    // Which admin last changed this listing's status (activate/deactivate) and when - so a
+    // deactivation isn't an untraceable action once more than one admin account exists. Null
+    // until the first admin-driven status change; never set by anything but
+    // AdminProductService.updateProductStatus().
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "last_modified_by_admin_id")
+    private User lastModifiedByAdmin;
+
+    @Column(name = "last_modified_at")
+    private LocalDateTime lastModifiedAt;
+
     private LocalDateTime createdAt;
 
     @PrePersist

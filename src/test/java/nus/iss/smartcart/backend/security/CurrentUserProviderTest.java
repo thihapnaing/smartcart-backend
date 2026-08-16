@@ -108,6 +108,35 @@ class CurrentUserProviderTest {
         assertThrows(ForbiddenException.class, provider::getCurrentAdmin);
     }
 
+    // ── getCurrentUser ───────────────────────────────────────────────────
+    // Same real-auth path, minus the role check - used by endpoints any authenticated account
+    // can call (e.g. POST /api/auth/change-password).
+
+    @Test
+    void getCurrentUser_returnsTheAuthenticatedUser_regardlessOfRole() {
+        authenticateAs("newadmin@smartcart.demo", UserRole.ADMIN);
+        User admin = user(5L, "newadmin@smartcart.demo", UserRole.ADMIN);
+        when(userRepository.findByEmail("newadmin@smartcart.demo")).thenReturn(Optional.of(admin));
+
+        assertSame(admin, provider().getCurrentUser());
+    }
+
+    @Test
+    void getCurrentUser_throwsForbidden_whenNoOneIsAuthenticated() {
+        CurrentUserProvider provider = provider();
+
+        assertThrows(ForbiddenException.class, provider::getCurrentUser);
+    }
+
+    @Test
+    void getCurrentUser_throwsForbidden_whenTheAuthenticatedEmailNoLongerExists() {
+        authenticateAs("ghost@smartcart.com", UserRole.ADMIN);
+        when(userRepository.findByEmail("ghost@smartcart.com")).thenReturn(Optional.empty());
+        CurrentUserProvider provider = provider();
+
+        assertThrows(ForbiddenException.class, provider::getCurrentUser);
+    }
+
     // ── getCurrentMerchant / getCurrentCustomer ─────────────────────────
     // No merchant/customer login UI exists yet, so these are hardcoded to a seed user
     // rather than reading SecurityContextHolder - see the class-level comment.

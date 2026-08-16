@@ -1,5 +1,6 @@
 package nus.iss.smartcart.backend.service;
 
+import nus.iss.smartcart.backend.dto.ChangePasswordRequest;
 import nus.iss.smartcart.backend.dto.LoginRequest;
 import nus.iss.smartcart.backend.dto.LoginResponse;
 import nus.iss.smartcart.backend.dto.RegisterRequest;
@@ -7,6 +8,7 @@ import nus.iss.smartcart.backend.model.User;
 import nus.iss.smartcart.backend.model.UserRole;
 import nus.iss.smartcart.backend.model.UserStatus;
 import nus.iss.smartcart.backend.repository.UserRepository;
+import nus.iss.smartcart.backend.security.CurrentUserProvider;
 import nus.iss.smartcart.backend.security.JwtService;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,15 +22,18 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final CurrentUserProvider currentUserProvider;
 
     public AuthService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
-            JwtService jwtService
+            JwtService jwtService,
+            CurrentUserProvider currentUserProvider
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.currentUserProvider = currentUserProvider;
     }
 
     public LoginResponse register(RegisterRequest request) {
@@ -97,7 +102,8 @@ public class AuthService {
                 savedUser.getId(),
                 savedUser.getUsername(),
                 savedUser.getEmail(),
-                savedUser.getRole().name()
+                savedUser.getRole().name(),
+                Boolean.TRUE.equals(savedUser.getMustChangePassword())
         );
     }
 
@@ -136,7 +142,12 @@ public class AuthService {
         }
 
 
-        if (!request.getPassword().matches(".*[A-Z].*")) {
+        // AUTHOR: Htet Nandar(Grace)
+        // Plain character scans instead of ".*[A-Z].*"-style regexes - those are super-linear
+        // (backtracking risk grows with input length) for what's really just a "does this string
+        // contain a character in this class" check, which chars().anyMatch(...) does in one
+        // linear pass with no regex engine involved at all.
+        if (request.getPassword().chars().noneMatch(Character::isUpperCase)) {
 
             throw new IllegalArgumentException(
                     "Password must contain at least one uppercase letter"
@@ -144,7 +155,7 @@ public class AuthService {
         }
 
 
-        if (!request.getPassword().matches(".*[a-z].*")) {
+        if (request.getPassword().chars().noneMatch(Character::isLowerCase)) {
 
             throw new IllegalArgumentException(
                     "Password must contain at least one lowercase letter"
@@ -152,7 +163,7 @@ public class AuthService {
         }
 
 
-        if (!request.getPassword().matches(".*[0-9].*")) {
+        if (request.getPassword().chars().noneMatch(Character::isDigit)) {
 
             throw new IllegalArgumentException(
                     "Password must contain at least one number"
@@ -200,7 +211,8 @@ public class AuthService {
                 savedUser.getId(),
                 savedUser.getUsername(),
                 savedUser.getEmail(),
-                savedUser.getRole().name()
+                savedUser.getRole().name(),
+                Boolean.TRUE.equals(savedUser.getMustChangePassword())
         );
     }
 
@@ -238,7 +250,23 @@ public class AuthService {
                 user.getId(),
                 user.getUsername(),
                 user.getEmail(),
-                user.getRole().name()
+                user.getRole().name(),
+                Boolean.TRUE.equals(user.getMustChangePassword())
         );
+    }
+
+    // AUTHOR: Htet Nandar(Grace)
+    /** only an admin-invited admin ever has mustChangePassword set) replace their password.
+     * Always clears mustChangePassword */
+    public void changePassword(ChangePasswordRequest request) {
+        User user = currentUserProvider.getCurrentUser();
+
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new IllegalArgumentException("Passwords do not match");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setMustChangePassword(false);
+        userRepository.save(user);
     }
 }

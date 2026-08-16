@@ -24,4 +24,6 @@ public class AdminMerchantDetailDto {
     private long listingCount;
     private long orderCount;
     private BigDecimal revenue;
+    private String lastModifiedByAdminUsername;
+    private LocalDateTime lastModifiedAt;
 }

@@ -26,7 +26,6 @@ public class OrderController {
         this.currentUserProvider = currentUserProvider;
     }
 
-    //change to authenticated user ID, once JWT auth is implemented
     @PostMapping("/checkout")
     public ResponseEntity<List<CheckoutResponse>> checkout(@RequestBody CheckoutRequest request) {
         Long userId = currentUserProvider.getCurrentCustomer().getId();
@@ -43,14 +42,6 @@ public class OrderController {
     @GetMapping("/merchant")
     public ResponseEntity<List<MerchantOrderItemResponse>> getMerchantOrderItems() {
         List<MerchantOrderItemResponse> response = orderService.getMerchantOrderItems();
-        return ResponseEntity.ok(response);
-    }
-
-    @PatchMapping("/{id}/status")
-    public ResponseEntity<UpdateOrderStatusResponse> updateOrderStatus(
-            @PathVariable Long id,
-            @RequestBody UpdateOrderStatusRequest request) {
-        UpdateOrderStatusResponse response = orderService.updateOrderStatus(id, request.getStatus());
         return ResponseEntity.ok(response);
     }
 }

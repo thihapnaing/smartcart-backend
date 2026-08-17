@@ -16,6 +16,7 @@ public class MerchantOrderItemResponse {
     private BigDecimal unitPrice;
     private BigDecimal subtotal;
     private String orderStatus;
+    private LocalDateTime deliveredAt;
     private LocalDateTime orderDate;
     private String buyerFirstName;
     private String buyerLastName;

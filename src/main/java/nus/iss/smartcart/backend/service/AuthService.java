@@ -86,6 +86,11 @@ public class AuthService {
 
         // Customer signup can only create CUSTOMER accounts.
         user.setRole(UserRole.CUSTOMER);
+        if ("DELIVERYMAN".equalsIgnoreCase(
+                String.valueOf(request.getRole()))) {
+
+            user.setRole(UserRole.DELIVERYMAN);
+        }
         user.setStatus(UserStatus.ACTIVE);
 
         User savedUser = userRepository.save(user);

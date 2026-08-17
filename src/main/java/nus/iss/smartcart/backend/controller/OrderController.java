@@ -113,40 +113,98 @@ public class OrderController {
         return ResponseEntity.ok(updatedOrder);
     }
 
-    //    GET http://localhost:8080/api/orders/search/TRK-2026-0001/1
     @GetMapping(
             "/search/{trackingNo}/{deliveryPersonId}"
     )
-    public ResponseEntity<Order> searchOrder(
+    public ResponseEntity<OrderResponse> searchOrder(
             @PathVariable String trackingNo,
             @PathVariable Long deliveryPersonId
     ) {
         Order order =
-                orderService.searchAssignedOrderByTrackingNo(
-                        trackingNo,
-                        deliveryPersonId
+                orderService
+                        .searchAssignedOrderByTrackingNo(
+                                trackingNo,
+                                deliveryPersonId
+                        );
+
+        OrderResponse response =
+                new OrderResponse(
+                        order.getId(),
+                        order.getTrackingNo(),
+                        order.getDeliveryPersonId(),
+                        order.getStatus(),
+                        order.getFirstName(),
+                        order.getLastName(),
+                        order.getPhoneNumber(),
+                        order.getShippingAddress(),
+                        order.getDeliveryProofKey(),
+                        order.getDeliveredAt()
                 );
 
-        return ResponseEntity.ok(order);
+        return ResponseEntity.ok(response);
     }
 
+//    @GetMapping(
+//            "/search/{trackingNo}/{deliveryPersonId}"
+//    )
+//    public ResponseEntity<Order> searchOrder(
+//            @PathVariable String trackingNo,
+//            @PathVariable Long deliveryPersonId
+//    ) {
+//        Order order =
+//                orderService.searchAssignedOrderByTrackingNo(
+//                        trackingNo,
+//                        deliveryPersonId
+//                );
+//
+//        return ResponseEntity.ok(order);
+//    }
+
+//    @PostMapping("/{trackingNo}/proof/confirm")
+//    public ResponseEntity<Order> confirmDeliveryProof(
+//            @PathVariable("trackingNo") String trackingNo,
+//            @RequestBody ConfirmDeliveryRequest request
+//    ) {
+//        if (request.getFileKey() == null ||
+//                request.getFileKey().isBlank()) {
+//            return ResponseEntity.badRequest().build();
+//        }
+//
+//        Order updatedOrder =
+//                orderService.confirmDeliveryProof(
+//                        trackingNo,
+//                        request.getFileKey()
+//                );
+//
+//        return ResponseEntity.ok(updatedOrder);
+//    }
+
+//    @PostMapping("/{trackingNo}/proof/confirm")
+//    public ResponseEntity<Void> confirmDeliveryProof(
+//            @PathVariable String trackingNo,
+//            @RequestBody ConfirmDeliveryRequest request
+//    ) {
+//        orderService.confirmDeliveryProof(
+//                trackingNo,
+//                request.getFileKey()
+//        );
+//
+//        return ResponseEntity
+//                .noContent()
+//                .build();
+//    }
+
     @PostMapping("/{trackingNo}/proof/confirm")
-    public ResponseEntity<Order> confirmDeliveryProof(
-            @PathVariable("trackingNo") String trackingNo,
+    public ResponseEntity<Void> confirmDeliveryProof(
+            @PathVariable String trackingNo,
             @RequestBody ConfirmDeliveryRequest request
     ) {
-        if (request.getFileKey() == null ||
-                request.getFileKey().isBlank()) {
-            return ResponseEntity.badRequest().build();
-        }
+        orderService.confirmDeliveryProof(
+                trackingNo,
+                request.getFileKey()
+        );
 
-        Order updatedOrder =
-                orderService.confirmDeliveryProof(
-                        trackingNo,
-                        request.getFileKey()
-                );
-
-        return ResponseEntity.ok(updatedOrder);
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping(

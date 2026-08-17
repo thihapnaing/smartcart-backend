@@ -335,13 +335,50 @@ public class OrderService {
                 .orElseThrow(() ->
                         new ResponseStatusException(
                                 HttpStatus.NOT_FOUND,
-                                "Order not found or not assigned?: " + trackingNo
+                                "Order not found or not assigned"
                         )
                 );
     }
+//    public Order searchAssignedOrderByTrackingNo(
+//            String trackingNo,
+//            Long deliveryPersonId
+//    ) {
+//        return orderRepository
+//                .findByTrackingNoAndDeliveryPersonId(
+//                        trackingNo,
+//                        deliveryPersonId
+//                )
+//                .orElseThrow(() ->
+//                        new ResponseStatusException(
+//                                HttpStatus.NOT_FOUND,
+//                                "Order not found or not assigned?: " + trackingNo
+//                        )
+//                );
+//    }
+
+//    @Transactional
+//    public Order confirmDeliveryProof(
+//            String trackingNo,
+//            String fileKey
+//    ) {
+//        Order order = orderRepository
+//                .findByTrackingNo(trackingNo)
+//                .orElseThrow(() ->
+//                        new ResponseStatusException(
+//                                HttpStatus.NOT_FOUND,
+//                                "Order not found"
+//                        )
+//                );
+//
+//        order.setDeliveryProofKey(fileKey);
+//        order.setStatus(OrderStatus.DELIVERED);
+//        order.setDeliveredAt(LocalDateTime.now());
+//
+//        return orderRepository.save(order);
+//    }
 
     @Transactional
-    public Order confirmDeliveryProof(
+    public void confirmDeliveryProof(
             String trackingNo,
             String fileKey
     ) {
@@ -354,11 +391,27 @@ public class OrderService {
                         )
                 );
 
-        order.setDeliveryProofKey(fileKey);
-        order.setStatus(OrderStatus.DELIVERED);
-        order.setDeliveredAt(LocalDateTime.now());
+        if (fileKey == null ||
+                fileKey.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Delivery proof file key is required"
+            );
+        }
 
-        return orderRepository.save(order);
+        order.setDeliveryProofKey(
+                fileKey
+        );
+
+        order.setStatus(
+                OrderStatus.DELIVERED
+        );
+
+        order.setDeliveredAt(
+                LocalDateTime.now()
+        );
+
+        orderRepository.save(order);
     }
 
     @Transactional
@@ -377,10 +430,7 @@ public class OrderService {
 
         order.setDeliveryPersonId(deliveryPersonId);
 
-        Order savedOrder =
-                orderRepository.save(order);
-
-        return savedOrder;
+        return orderRepository.save(order);
     }
 
     @Transactional
@@ -470,11 +520,6 @@ public class OrderService {
 
         // Notify only for a new delivery-person assignment
         if (assigningDeliveryPerson) {
-            System.out.println(
-                    "Sending notification to driver " +
-                            updatedOrder.getDeliveryPersonId()
-            );
-
             pushNotificationService.notifyJobAssigned(
                     updatedOrder
             );
@@ -511,5 +556,4 @@ public class OrderService {
                 order.getDeliveryProofKey()
         );
     }
-
 }

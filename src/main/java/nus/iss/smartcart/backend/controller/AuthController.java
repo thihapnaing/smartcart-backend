@@ -1,10 +1,7 @@
 package nus.iss.smartcart.backend.controller;
 
 import jakarta.validation.Valid;
-import nus.iss.smartcart.backend.dto.ChangePasswordRequest;
-import nus.iss.smartcart.backend.dto.LoginRequest;
-import nus.iss.smartcart.backend.dto.LoginResponse;
-import nus.iss.smartcart.backend.dto.RegisterRequest;
+import nus.iss.smartcart.backend.dto.*;
 import nus.iss.smartcart.backend.service.AuthService;
 
 import org.springframework.http.HttpStatus;
@@ -113,6 +110,60 @@ public class AuthController {
                     .badRequest()
                     .body(e.getMessage());
         }
+    }
+
+    //Junior
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(
+            @RequestBody ResetPasswordRequest request
+    ) {
+
+        try {
+
+            authService.resetPassword(request);
+
+            return ResponseEntity.ok(
+                    java.util.Map.of(
+                            "message",
+                            "Password updated successfully"
+                    )
+            );
+
+        } catch (IllegalArgumentException e) {
+
+            return ResponseEntity
+                    .badRequest()
+                    .body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/check-email")
+    public ResponseEntity<Map<String, String>> checkEmail(
+            @RequestBody Map<String, String> request) {
+
+        String email = request.get("email");
+
+        if (email == null || email.trim().isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of(
+                            "message", "Email is required"
+                    ));
+        }
+
+        boolean exists = authService.checkEmail(email.trim());
+
+        if (!exists) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of(
+                            "message", "Email address not found"
+                    ));
+        }
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "message", "Email address found"
+                )
+        );
     }
 
     @PostMapping("/logout")

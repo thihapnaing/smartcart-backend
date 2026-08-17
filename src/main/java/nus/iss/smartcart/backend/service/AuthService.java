@@ -1,9 +1,6 @@
 package nus.iss.smartcart.backend.service;
 
-import nus.iss.smartcart.backend.dto.ChangePasswordRequest;
-import nus.iss.smartcart.backend.dto.LoginRequest;
-import nus.iss.smartcart.backend.dto.LoginResponse;
-import nus.iss.smartcart.backend.dto.RegisterRequest;
+import nus.iss.smartcart.backend.dto.*;
 import nus.iss.smartcart.backend.model.User;
 import nus.iss.smartcart.backend.model.UserRole;
 import nus.iss.smartcart.backend.model.UserStatus;
@@ -268,5 +265,98 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         user.setMustChangePassword(false);
         userRepository.save(user);
+    }
+
+    //Author: Junior
+    public void resetPassword(ResetPasswordRequest request) {
+
+        if (request.getEmail() == null ||
+                request.getEmail().isBlank()) {
+
+            throw new IllegalArgumentException(
+                    "Email is required"
+            );
+        }
+
+        if (request.getNewPassword() == null ||
+                request.getNewPassword().isBlank()) {
+
+            throw new IllegalArgumentException(
+                    "New password is required"
+            );
+        }
+
+        if (request.getConfirmPassword() == null ||
+                request.getConfirmPassword().isBlank()) {
+
+            throw new IllegalArgumentException(
+                    "Please confirm your password"
+            );
+        }
+
+        // Check email in users table
+        User user = userRepository
+                .findByEmail(request.getEmail().trim())
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Email address not found"
+                        )
+                );
+
+        // Validate password length
+        if (request.getNewPassword().length() < 6) {
+
+            throw new IllegalArgumentException(
+                    "Password must be at least 6 characters"
+            );
+        }
+
+        // Validate uppercase
+        if (!request.getNewPassword().matches(".*[A-Z].*")) {
+
+            throw new IllegalArgumentException(
+                    "Password must contain at least one uppercase letter"
+            );
+        }
+
+        // Validate lowercase
+        if (!request.getNewPassword().matches(".*[a-z].*")) {
+
+            throw new IllegalArgumentException(
+                    "Password must contain at least one lowercase letter"
+            );
+        }
+
+        // Validate number
+        if (!request.getNewPassword().matches(".*[0-9].*")) {
+
+            throw new IllegalArgumentException(
+                    "Password must contain at least one number"
+            );
+        }
+
+        // Check password confirmation
+        if (!request.getNewPassword().equals(
+                request.getConfirmPassword())) {
+
+            throw new IllegalArgumentException(
+                    "Passwords do not match"
+            );
+        }
+
+        // Encode password before saving
+        user.setPassword(
+                passwordEncoder.encode(
+                        request.getNewPassword()
+                )
+        );
+
+        userRepository.save(user);
+    }
+
+    //Junior
+    public boolean checkEmail(String email) {
+
+        return userRepository.findByEmail(email).isPresent();
     }
 }

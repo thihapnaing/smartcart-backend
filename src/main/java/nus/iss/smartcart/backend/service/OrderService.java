@@ -175,6 +175,8 @@ public class OrderService {
                 .unitPrice(orderItem.getUnitPrice())
                 .subtotal(orderItem.getUnitPrice().multiply(BigDecimal.valueOf(orderItem.getQuantity())))
                 .orderStatus(orderItem.getOrder().getStatus().name())
+                .orderDate(orderItem.getOrder().getOrderDate())
+                .deliveredAt(orderItem.getOrder().getDeliveredAt())
                 .buyerFirstName(orderItem.getOrder().getFirstName())
                 .buyerLastName(orderItem.getOrder().getLastName())
                 .build();

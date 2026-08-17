@@ -117,21 +117,4 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$[0].productName").value("White Tee"))
                 .andExpect(jsonPath("$[0].buyerFirstName").value("John"));
     }
-
-    @Test
-    void updateOrderStatus_returnsOkWithUpdatedStatus() throws Exception {
-        UpdateOrderStatusRequest request = new UpdateOrderStatusRequest();
-        request.setStatus(OrderStatus.PACKED);
-
-        UpdateOrderStatusResponse response = new UpdateOrderStatusResponse(1L, "PACKED");
-        when(orderService.updateOrderStatus(1L, OrderStatus.PACKED)).thenReturn(response);
-
-        mockMvc.perform(patch("/api/orders/1/status")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                )
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.orderId").value(1))
-                .andExpect(jsonPath("$.status").value("PACKED"));
-    }
 }

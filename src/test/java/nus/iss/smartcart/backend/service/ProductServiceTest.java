@@ -359,7 +359,12 @@ class ProductServiceTest {
         when(merchant2.getId()).thenReturn(2L);
         when(merchant.getId()).thenReturn(1L);
 
-        assertThrows(ForbiddenException.class, () -> productService.deactivateProduct(1L));
+        ForbiddenException ex = assertThrows(
+                ForbiddenException.class,
+                () -> productService.activateProduct(1L)
+        );
+
+        assertEquals("FORBIDDEN", ex.getCode());
     }
 
     @Test
@@ -439,7 +444,14 @@ class ProductServiceTest {
         when(merchant.getId()).thenReturn(1L);
 
         when(product.getAdminLocked()).thenReturn(true);
-        assertThrows(ForbiddenException.class, () -> productService.activateProduct(1L));
+
+        ForbiddenException ex = assertThrows(
+                ForbiddenException.class,
+                () -> productService.activateProduct(1L)
+        );
+
+        assertEquals("ADMIN_LOCKED", ex.getCode());
+        assertEquals("Product is locked by admin", ex.getMessage());
 
         verify(product, never()).setStatus(ProductStatus.ACTIVE);
         verify(productRepository, never()).save(product);
@@ -457,7 +469,12 @@ class ProductServiceTest {
         when(currentUserProvider.getCurrentMerchant()).thenReturn(merchant);
         when(merchant.getId()).thenReturn(1L);
 
-        assertThrows(ForbiddenException.class, () -> productService.activateProduct(1L));
+        ForbiddenException ex = assertThrows(
+                ForbiddenException.class,
+                () -> productService.activateProduct(1L)
+        );
+
+        assertEquals("FORBIDDEN", ex.getCode());
     }
 
     @Test

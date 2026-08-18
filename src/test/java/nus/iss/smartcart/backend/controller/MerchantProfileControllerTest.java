@@ -2,8 +2,6 @@ package nus.iss.smartcart.backend.controller;
 
 // Author: Junior
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import nus.iss.smartcart.backend.dto.CreateMerchantProfileRequest;
 import nus.iss.smartcart.backend.model.MerchantProfile;
 import nus.iss.smartcart.backend.service.MerchantProfileService;
@@ -42,8 +40,6 @@ class MerchantProfileControllerTest {
 
     private MockMvc mockMvc;
 
-    private ObjectMapper objectMapper;
-
     @BeforeEach
     void setUp() {
 
@@ -53,9 +49,6 @@ class MerchantProfileControllerTest {
                                 merchantProfileController
                         )
                         .build();
-
-        objectMapper =
-                new ObjectMapper();
     }
 
     // SUCCESS
@@ -561,7 +554,7 @@ class MerchantProfileControllerTest {
     // UNABLE TO CREATE PROFILE CHECKED
     @Test
     void createMerchantProfile_serviceException()
-            throws Exception {
+    {
 
         MockMultipartFile registrationDocument =
                 createRegistrationDocument();

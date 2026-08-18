@@ -28,5 +28,7 @@ public class ImageSearchResponse {
     private List<ProductSearchResult> products;
 
     public ImageSearchResponse() {
+        // Required by the controller to construct the request DTO
+        // before assigning multipart form values.
     }
 }

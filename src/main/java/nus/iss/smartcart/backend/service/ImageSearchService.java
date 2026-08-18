@@ -1,6 +1,6 @@
 package nus.iss.smartcart.backend.service;
 
-//Author: Junior
+// Author: Junior
 
 import nus.iss.smartcart.backend.dto.ImageSearchResponse;
 import nus.iss.smartcart.backend.dto.ProductSearchResult;
@@ -11,12 +11,14 @@ import nus.iss.smartcart.backend.repository.ProductRepository;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -47,6 +49,10 @@ public class ImageSearchService {
     public ImageSearchResponse searchByImage(
             MultipartFile image) {
 
+        // =====================================================
+        // VALIDATE IMAGE
+        // =====================================================
+
         if (image == null || image.isEmpty()) {
             throw new IllegalArgumentException(
                     "Image file is required"
@@ -55,41 +61,74 @@ public class ImageSearchService {
 
         try {
 
+            // =================================================
+            // GET ORIGINAL FILENAME
+            // =================================================
+
+            String originalFilename =
+                    image.getOriginalFilename();
+
+            final String filename =
+                    originalFilename != null
+                            && !originalFilename.isBlank()
+                            ? originalFilename
+                            : "image.jpg";
+
+            // =================================================
+            // CREATE IMAGE RESOURCE
+            // =================================================
+
             ByteArrayResource imageResource =
-                    new ByteArrayResource(image.getBytes()) {
+                    new ByteArrayResource(
+                            image.getBytes()
+                    ) {
 
                         @Override
                         public String getFilename() {
-
-                            String filename =
-                                    image.getOriginalFilename();
-
-                            return filename != null
-                                    ? filename
-                                    : "image.jpg";
+                            return filename;
                         }
                     };
+
+            // =================================================
+            // GET CONTENT TYPE
+            // =================================================
+
+            String contentType =
+                    image.getContentType();
+
+            final MediaType imageMediaType;
+
+            if (contentType == null
+                    || contentType.isBlank()) {
+
+                imageMediaType =
+                        MediaType.IMAGE_JPEG;
+
+            } else {
+
+                imageMediaType =
+                        MediaType.parseMediaType(
+                                contentType
+                        );
+            }
+
+            // =================================================
+            // BUILD MULTIPART REQUEST
+            // =================================================
 
             MultipartBodyBuilder builder =
                     new MultipartBodyBuilder();
 
-            builder.part("image", imageResource)
-                    .contentType(
-                            image.getContentType() != null
-                                    ? MediaType.parseMediaType(
-                                    image.getContentType()
-                            )
-                                    : MediaType.IMAGE_JPEG
+            builder.part(
+                            "image",
+                            imageResource
                     )
-                    .filename(
-                            image.getOriginalFilename() != null
-                                    ? image.getOriginalFilename()
-                                    : "image.jpg"
-                    );
+                    .contentType(imageMediaType)
+                    .filename(filename);
 
-            System.out.println(
-                    "========== SENDING TO PYTHON =========="
-            );
+            // =================================================
+            // SEND IMAGE TO PYTHON AI SERVICE
+            // =================================================
 
             ImageSearchResponse aiResponse =
                     webClient.post()
@@ -108,71 +147,42 @@ public class ImageSearchService {
                             )
                             .block();
 
-            System.out.println(
-                    "========== PYTHON RESPONSE RECEIVED =========="
-            );
+            // =================================================
+            // CHECK AI RESPONSE
+            // =================================================
 
             if (aiResponse == null) {
-                throw new RuntimeException(
+
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_GATEWAY,
                         "AI service returned no response"
                 );
             }
 
-            System.out.println(
-                    "Prediction: "
-                            + aiResponse.getPrediction()
-            );
+            // =================================================
+            // SEARCH MYSQL
+            // =================================================
 
-            System.out.println(
-                    "Search Label: "
-                            + aiResponse.getSearchLabel()
-            );
-
-            System.out.println(
-                    "Gender: "
-                            + aiResponse.getGender()
-            );
-
-            System.out.println(
-                    "Color: "
-                            + aiResponse.getColor()
-            );
-
-            System.out.println(
-                    "Category: "
-                            + aiResponse.getCategory()
-            );
-
-            // Search MySQL using AI attributes.
             List<ProductSearchResult> products =
                     searchProductsFromPrediction(
                             aiResponse
                     );
-            aiResponse.setProducts(products);
+
+            // =================================================
+            // ADD PRODUCTS TO RESPONSE
+            // =================================================
+
+            aiResponse.setProducts(
+                    products
+            );
 
             return aiResponse;
 
         } catch (Exception e) {
 
-            System.err.println(
-                    "========== IMAGE SEARCH ERROR =========="
-            );
-
-            System.err.println(
-                    "Exception: "
-                            + e.getClass().getName()
-            );
-
-            System.err.println(
-                    "Message: "
-                            + e.getMessage()
-            );
-
-            e.printStackTrace();
-
-            System.err.println(
-                    "========================================"
-            );
+            // =================================================
+            // ERROR HANDLING
+            // =================================================
 
             throw new RuntimeException(
                     "Image search failed: "
@@ -182,7 +192,6 @@ public class ImageSearchService {
         }
     }
 
-
     // =========================================================
     // SEARCH MYSQL USING AI PREDICTION
     // =========================================================
@@ -191,33 +200,9 @@ public class ImageSearchService {
     searchProductsFromPrediction(
             ImageSearchResponse aiResponse) {
 
-        System.out.println(
-                "========== IMAGE SEARCH PARAMETERS =========="
-        );
-
-        System.out.println(
-                "Gender: "
-                        + aiResponse.getGender()
-        );
-
-        System.out.println(
-                "Color: "
-                        + aiResponse.getColor()
-        );
-
-        System.out.println(
-                "Category: "
-                        + aiResponse.getCategory()
-        );
-
-        System.out.println(
-                "Status: "
-                        + ProductStatus.ACTIVE
-        );
-
-        System.out.println(
-                "============================================="
-        );
+        // =====================================================
+        // CONVERT GENDER
+        // =====================================================
 
         Gender gender;
 
@@ -242,6 +227,10 @@ public class ImageSearchService {
             );
         }
 
+        // =====================================================
+        // SEARCH PRODUCTS
+        // =====================================================
+
         List<Product> products =
                 productRepository.searchByImageAttributes(
                         gender,
@@ -250,23 +239,12 @@ public class ImageSearchService {
                         ProductStatus.ACTIVE
                 );
 
-        System.out.println(
-                "Products found: "
-                        + products.size()
-        );
+        // =====================================================
+        // CONVERT PRODUCTS TO SEARCH RESULTS
+        // =====================================================
 
         return products.stream()
-                .map(product -> {
-
-                    System.out.println(
-                            "Converting product ID: "
-                                    + product.getId()
-                    );
-
-                    return productService
-                            .toSearchResult(product);
-
-                })
+                .map(productService::toSearchResult)
                 .toList();
     }
 }

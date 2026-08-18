@@ -19,6 +19,8 @@ public class AuthController {
 
     private final AuthService authService;
 
+    private static final String MESSAGE = "message";
+
     public AuthController(AuthService authService) {
         this.authService = authService;
     }
@@ -101,7 +103,7 @@ public class AuthController {
             authService.changePassword(request);
 
             return ResponseEntity.ok(
-                    Map.of("message", "Password changed successfully")
+                    Map.of(MESSAGE, "Password changed successfully")
             );
 
         } catch (IllegalArgumentException e) {
@@ -124,7 +126,7 @@ public class AuthController {
 
             return ResponseEntity.ok(
                     java.util.Map.of(
-                            "message",
+                            MESSAGE,
                             "Password updated successfully"
                     )
             );
@@ -146,7 +148,7 @@ public class AuthController {
         if (email == null || email.trim().isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(Map.of(
-                            "message", "Email is required"
+                            MESSAGE, "Email is required"
                     ));
         }
 
@@ -161,7 +163,7 @@ public class AuthController {
 
         return ResponseEntity.ok(
                 Map.of(
-                        "message", "Email address found"
+                        MESSAGE, "Email address found"
                 )
         );
     }
@@ -171,7 +173,7 @@ public class AuthController {
 
         return ResponseEntity.ok(
                 java.util.Map.of(
-                        "message", "Logout successful"
+                        MESSAGE, "Logout successful"
                 )
         );
     }

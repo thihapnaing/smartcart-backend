@@ -34,6 +34,8 @@ public class CreateMerchantProfileRequest {
     // =========================================================
 
     public CreateMerchantProfileRequest() {
+        // Required by the controller to construct the request DTO
+        // before assigning multipart form values.
     }
 
 

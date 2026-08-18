@@ -1,7 +1,10 @@
 package nus.iss.smartcart.backend.service;
 
 import nus.iss.smartcart.backend.dto.CreateMerchantProfileRequest;
-import nus.iss.smartcart.backend.model.*;
+import nus.iss.smartcart.backend.model.MerchantProfile;
+import nus.iss.smartcart.backend.model.MerchantVerificationStatus;
+import nus.iss.smartcart.backend.model.User;
+import nus.iss.smartcart.backend.model.UserRole;
 import nus.iss.smartcart.backend.repository.MerchantProfileRepository;
 import nus.iss.smartcart.backend.repository.UserRepository;
 import org.springframework.http.HttpStatus;
@@ -15,18 +18,23 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 
+//Author: Junior
+
 @Service
 public class MerchantProfileService {
 
     private final MerchantProfileRepository merchantProfileRepository;
-    private final UserRepository userRepository;
 
+    private final UserRepository userRepository;
 
     private final Path uploadDirectory =
             Paths.get("upload", "merchant")
                     .toAbsolutePath()
                     .normalize();
 
+    // =========================================================
+    // CONSTRUCTOR
+    // =========================================================
 
     public MerchantProfileService(
             MerchantProfileRepository merchantProfileRepository,
@@ -39,7 +47,6 @@ public class MerchantProfileService {
                 userRepository;
     }
 
-
     // =========================================================
     // CREATE MERCHANT PROFILE
     // =========================================================
@@ -47,37 +54,99 @@ public class MerchantProfileService {
     public MerchantProfile createMerchantProfile(
             CreateMerchantProfileRequest request) {
 
-        // -----------------------------------------------------
-        // USER ID
-        // -----------------------------------------------------
+        validateRequest(request);
+
+        User user = findUser(request.getUserId());
+
+        validateMerchantRole(user);
+
+        validateExistingProfile(user);
+
+        String uen = validateUen(request);
+
+        validateBusinessInformation(request);
+
+        MultipartFile logo = request.getLogo();
+
+        MultipartFile registrationDocument =
+                request.getRegistrationDocument();
+
+        validateLogo(logo);
+
+        validateRegistrationDocument(
+                registrationDocument
+        );
+
+        createUploadDirectory();
+
+        String logoUrl = saveLogo(
+                logo,
+                user.getId()
+        );
+
+        String documentUrl = saveRegistrationDocument(
+                registrationDocument,
+                user.getId()
+        );
+
+        MerchantProfile profile =
+                buildMerchantProfile(
+                        request,
+                        user,
+                        uen,
+                        logoUrl,
+                        documentUrl
+                );
+
+        return merchantProfileRepository.save(
+                profile
+        );
+    }
+
+    // =========================================================
+    // REQUEST VALIDATION
+    // =========================================================
+
+    private void validateRequest(
+            CreateMerchantProfileRequest request) {
+
+        if (request == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Request is required."
+            );
+        }
 
         if (request.getUserId() == null) {
-
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "User ID is required."
             );
         }
+    }
 
+    // =========================================================
+    // FIND USER
+    // =========================================================
 
-        // -----------------------------------------------------
-        // FIND USER
-        // -----------------------------------------------------
+    private User findUser(Long userId) {
 
-        User user =
-                userRepository.findById(
-                        request.getUserId()
-                ).orElseThrow(() ->
+        return userRepository
+                .findById(userId)
+                .orElseThrow(() ->
                         new ResponseStatusException(
                                 HttpStatus.NOT_FOUND,
                                 "User not found."
                         )
                 );
+    }
 
+    // =========================================================
+    // CHECK MERCHANT ROLE
+    // =========================================================
 
-        // -----------------------------------------------------
-        // CHECK MERCHANT ROLE
-        // -----------------------------------------------------
+    private void validateMerchantRole(
+            User user) {
 
         if (user.getRole() != UserRole.MERCHANT) {
 
@@ -86,64 +155,42 @@ public class MerchantProfileService {
                     "Only merchant accounts can create a merchant profile."
             );
         }
+    }
 
+    // =========================================================
+    // CHECK EXISTING PROFILE
+    // =========================================================
 
-        // -----------------------------------------------------
-        // CHECK EXISTING PROFILE
-        // -----------------------------------------------------
+    private void validateExistingProfile(
+            User user) {
 
-        if (
-                merchantProfileRepository
-                        .existsByUserId(user.getId())
-        ) {
+        if (merchantProfileRepository
+                .existsByUserId(user.getId())) {
 
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Merchant profile already exists."
             );
         }
+    }
 
+    // =========================================================
+    // UEN VALIDATION
+    // =========================================================
 
-        // -----------------------------------------------------
-        // BUSINESS NAME
-        // -----------------------------------------------------
+    private String validateUen(
+            CreateMerchantProfileRequest request) {
 
-        if (
-                request.getBusinessName() == null ||
-                        request.getBusinessName().trim().isEmpty()
-        ) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Business name is required."
-            );
-        }
-
-
-        // -----------------------------------------------------
-        // UEN
-        // -----------------------------------------------------
-
-        if (
-                request.getUen() == null ||
-                        request.getUen().trim().isEmpty()
-        ) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "UEN is required."
-            );
-        }
-
+        validateRequiredField(
+                request.getUen(),
+                "UEN"
+        );
 
         String uen =
                 request.getUen().trim();
 
-
-        if (
-                merchantProfileRepository
-                        .existsByUen(uen)
-        ) {
+        if (merchantProfileRepository
+                .existsByUen(uen)) {
 
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
@@ -151,142 +198,75 @@ public class MerchantProfileService {
             );
         }
 
+        return uen;
+    }
 
-        // -----------------------------------------------------
-        // BUSINESS TYPE
-        // -----------------------------------------------------
+    // =========================================================
+    // BUSINESS INFORMATION VALIDATION
+    // =========================================================
 
-        if (
-                request.getBusinessType() == null ||
-                        request.getBusinessType().trim().isEmpty()
-        ) {
+    private void validateBusinessInformation(
+            CreateMerchantProfileRequest request) {
 
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Business type is required."
-            );
-        }
+        validateRequiredField(
+                request.getBusinessName(),
+                "Business name"
+        );
 
+        validateRequiredField(
+                request.getBusinessType(),
+                "Business type"
+        );
 
-        // -----------------------------------------------------
-        // BUSINESS ADDRESS
-        // -----------------------------------------------------
+        validateRequiredField(
+                request.getBusinessAddress(),
+                "Business address"
+        );
 
-        if (
-                request.getBusinessAddress() == null ||
-                        request.getBusinessAddress().trim().isEmpty()
-        ) {
+        validateRequiredField(
+                request.getPostalCode(),
+                "Postal code"
+        );
 
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Business address is required."
-            );
-        }
+        validateRequiredField(
+                request.getContactNumber(),
+                "Contact number"
+        );
 
+        validateRequiredField(
+                request.getProductCategory(),
+                "Product category"
+        );
 
-        // -----------------------------------------------------
-        // POSTAL CODE
-        // -----------------------------------------------------
+        validateRequiredField(
+                request.getBusinessDescription(),
+                "Business description"
+        );
+    }
 
-        if (
-                request.getPostalCode() == null ||
-                        request.getPostalCode().trim().isEmpty()
-        ) {
+    // =========================================================
+    // REQUIRED FIELD VALIDATION
+    // =========================================================
 
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Postal code is required."
-            );
-        }
+    private void validateRequiredField(
+            String value,
+            String fieldName) {
 
-
-        // -----------------------------------------------------
-        // CONTACT NUMBER
-        // -----------------------------------------------------
-
-        if (
-                request.getContactNumber() == null ||
-                        request.getContactNumber().trim().isEmpty()
-        ) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Contact number is required."
-            );
-        }
-
-
-        // -----------------------------------------------------
-        // PRODUCT CATEGORY
-        // -----------------------------------------------------
-
-        if (
-                request.getProductCategory() == null ||
-                        request.getProductCategory().trim().isEmpty()
-        ) {
+        if (value == null ||
+                value.trim().isEmpty()) {
 
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Product category is required."
+                    fieldName + " is required."
             );
         }
+    }
 
+    // =========================================================
+    // CREATE UPLOAD DIRECTORY
+    // =========================================================
 
-        // -----------------------------------------------------
-        // BUSINESS DESCRIPTION
-        // -----------------------------------------------------
-
-        if (
-                request.getBusinessDescription() == null ||
-                        request.getBusinessDescription().trim().isEmpty()
-        ) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Business description is required."
-            );
-        }
-
-
-        // -----------------------------------------------------
-        // REGISTRATION DOCUMENT
-        // -----------------------------------------------------
-
-        if (
-                request.getRegistrationDocument() == null ||
-                        request.getRegistrationDocument().isEmpty()
-        ) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Business registration document is required."
-            );
-        }
-
-
-        // -----------------------------------------------------
-        // VALIDATE LOGO
-        // -----------------------------------------------------
-
-        MultipartFile logo =
-                request.getLogo();
-
-        validateLogo(logo);
-
-
-        // -----------------------------------------------------
-        // VALIDATE REGISTRATION DOCUMENT
-        // -----------------------------------------------------
-
-        MultipartFile document =
-                request.getRegistrationDocument();
-
-        validateRegistrationDocument(document);
-
-
-        // -----------------------------------------------------
-        // CREATE UPLOAD DIRECTORY
-        // -----------------------------------------------------
+    private void createUploadDirectory() {
 
         try {
 
@@ -301,41 +281,156 @@ public class MerchantProfileService {
                     "Unable to create upload directory."
             );
         }
+    }
 
+    // =========================================================
+    // LOGO VALIDATION
+    // =========================================================
 
-        // -----------------------------------------------------
-        // SAVE LOGO
-        // -----------------------------------------------------
+    private void validateLogo(
+            MultipartFile file) {
 
-        String logoUrl = null;
+        // Logo is optional.
+        if (file == null ||
+                file.isEmpty()) {
 
-        if (
-                logo != null &&
-                        !logo.isEmpty()
-        ) {
-
-            logoUrl =
-                    saveFile(
-                            logo,
-                            "logo_" + user.getId()
-                    );
+            return;
         }
 
+        // 2 MB
+        long maxSize =
+                2L * 1024L * 1024L;
 
-        // -----------------------------------------------------
-        // SAVE BUSINESS DOCUMENT
-        // -----------------------------------------------------
+        if (file.getSize() > maxSize) {
 
-        String documentUrl =
-                saveFile(
-                        document,
-                        "registration_" + user.getId()
-                );
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Business logo must be smaller than 2 MB."
+            );
+        }
 
+        String contentType =
+                file.getContentType();
 
-        // -----------------------------------------------------
-        // CREATE PROFILE
-        // -----------------------------------------------------
+        if (contentType == null ||
+                !isAllowedLogoType(contentType)) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Business logo must be JPG, PNG or WEBP."
+            );
+        }
+    }
+
+    // =========================================================
+    // LOGO FILE TYPE
+    // =========================================================
+
+    private boolean isAllowedLogoType(
+            String contentType) {
+
+        return contentType.equals("image/jpeg") ||
+                contentType.equals("image/png") ||
+                contentType.equals("image/webp");
+    }
+
+    // =========================================================
+    // REGISTRATION DOCUMENT VALIDATION
+    // =========================================================
+
+    private void validateRegistrationDocument(
+            MultipartFile file) {
+
+        if (file == null ||
+                file.isEmpty()) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Business registration document is required."
+            );
+        }
+
+        // 5 MB
+        long maxSize =
+                5L * 1024L * 1024L;
+
+        if (file.getSize() > maxSize) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Business registration document must be smaller than 5 MB."
+            );
+        }
+
+        String contentType =
+                file.getContentType();
+
+        if (contentType == null ||
+                !isAllowedDocumentType(contentType)) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Business registration document must be PDF, JPG or PNG."
+            );
+        }
+    }
+
+    // =========================================================
+    // DOCUMENT FILE TYPE
+    // =========================================================
+
+    private boolean isAllowedDocumentType(
+            String contentType) {
+
+        return contentType.equals("application/pdf") ||
+                contentType.equals("image/jpeg") ||
+                contentType.equals("image/png");
+    }
+
+    // =========================================================
+    // SAVE LOGO
+    // =========================================================
+
+    private String saveLogo(
+            MultipartFile logo,
+            Long userId) {
+
+        if (logo == null ||
+                logo.isEmpty()) {
+
+            return null;
+        }
+
+        return saveFile(
+                logo,
+                "logo_" + userId
+        );
+    }
+
+    // =========================================================
+    // SAVE REGISTRATION DOCUMENT
+    // =========================================================
+
+    private String saveRegistrationDocument(
+            MultipartFile document,
+            Long userId) {
+
+        return saveFile(
+                document,
+                "registration_" + userId
+        );
+    }
+
+    // =========================================================
+    // BUILD MERCHANT PROFILE
+    // =========================================================
+
+    private MerchantProfile buildMerchantProfile(
+            CreateMerchantProfileRequest request,
+            User user,
+            String uen,
+            String logoUrl,
+            String documentUrl) {
 
         MerchantProfile profile =
                 new MerchantProfile();
@@ -388,116 +483,8 @@ public class MerchantProfileService {
                 MerchantVerificationStatus.PENDING
         );
 
-
-        // -----------------------------------------------------
-        // SAVE DATABASE
-        // -----------------------------------------------------
-
-        return merchantProfileRepository.save(
-                profile
-        );
+        return profile;
     }
-
-
-    // =========================================================
-    // LOGO VALIDATION
-    // =========================================================
-
-    private void validateLogo(
-            MultipartFile file) {
-
-        if (
-                file == null ||
-                        file.isEmpty()
-        ) {
-
-            // Logo is optional.
-            return;
-        }
-
-
-        // 2 MB
-
-        long maxSize =
-                2L * 1024L * 1024L;
-
-
-        if (
-                file.getSize() > maxSize
-        ) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Business logo must be smaller than 2 MB."
-            );
-        }
-
-
-        String contentType =
-                file.getContentType();
-
-
-        if (
-                contentType == null ||
-                        !(
-                                contentType.equals("image/jpeg") ||
-                                        contentType.equals("image/png") ||
-                                        contentType.equals("image/webp")
-                        )
-        ) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Business logo must be JPG, PNG or WEBP."
-            );
-        }
-    }
-
-
-    // =========================================================
-    // DOCUMENT VALIDATION
-    // =========================================================
-
-    private void validateRegistrationDocument(
-            MultipartFile file) {
-
-        // 5 MB
-
-        long maxSize =
-                5L * 1024L * 1024L;
-
-
-        if (
-                file.getSize() > maxSize
-        ) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Business registration document must be smaller than 5 MB."
-            );
-        }
-
-
-        String contentType =
-                file.getContentType();
-
-
-        if (
-                contentType == null ||
-                        !(
-                                contentType.equals("application/pdf") ||
-                                        contentType.equals("image/jpeg") ||
-                                        contentType.equals("image/png")
-                        )
-        ) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Business registration document must be PDF, JPG or PNG."
-            );
-        }
-    }
-
 
     // =========================================================
     // SAVE FILE
@@ -507,18 +494,27 @@ public class MerchantProfileService {
             MultipartFile file,
             String prefix) {
 
-        if (file == null || file.isEmpty()) {
+        if (file == null ||
+                file.isEmpty()) {
+
             return null;
         }
 
-        String originalFilename = file.getOriginalFilename();
+        String originalFilename =
+                file.getOriginalFilename();
 
         String extension = "";
 
-        if (originalFilename != null && originalFilename.contains(".")) {
-            extension = originalFilename
-                    .substring(originalFilename.lastIndexOf("."))
-                    .toLowerCase();
+        if (originalFilename != null &&
+                originalFilename.contains(".")) {
+
+            extension =
+                    originalFilename
+                            .substring(
+                                    originalFilename
+                                            .lastIndexOf(".")
+                            )
+                            .toLowerCase();
         }
 
         String filename =
@@ -527,12 +523,15 @@ public class MerchantProfileService {
                         System.currentTimeMillis() +
                         extension;
 
-        Path target = uploadDirectory
-                .resolve(filename)
-                .normalize();
+        Path target =
+                uploadDirectory
+                        .resolve(filename)
+                        .normalize();
 
-        // Prevent path traversal
-        if (!target.getParent().equals(uploadDirectory)) {
+        // Prevent path traversal.
+        if (!target.getParent()
+                .equals(uploadDirectory)) {
+
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Invalid file name."

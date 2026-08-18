@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 @Setter
 @Getter
@@ -64,12 +65,9 @@ public class MerchantProfile {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    public MerchantProfile() {
-    }
-
     @PrePersist
     protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Singapore"));
 
         if (createdAt == null) {
             createdAt = now;
@@ -90,6 +88,6 @@ public class MerchantProfile {
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now(ZoneId.of("Asia/Singapore"));
     }
 }

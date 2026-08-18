@@ -36,7 +36,7 @@ public class UserProfileController {
 
     //createProfile w/o :: Junior
     @PostMapping
-    public ResponseEntity<?> createProfile(
+    public ResponseEntity<Object> createProfile(
             @RequestBody CreateUserProfileRequest request
     ) {
 
@@ -64,8 +64,6 @@ public class UserProfileController {
 
         } catch (Exception e) {
 
-            e.printStackTrace();
-
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(
@@ -79,7 +77,7 @@ public class UserProfileController {
             value = "/with-avatar",
             consumes = "multipart/form-data"
     )
-    public ResponseEntity<?> createProfileWithAvatar(
+    public ResponseEntity<Object> createProfileWithAvatar(
 
             @RequestParam("userId")
             Long userId,
@@ -188,8 +186,6 @@ public class UserProfileController {
                     .body(e.getMessage());
 
         } catch (Exception e) {
-
-            e.printStackTrace();
 
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)

@@ -14,5 +14,7 @@ public class ImageSearchResult {
     private Double similarity;
 
     public ImageSearchResult() {
+        // Required by the controller to construct the request DTO
+        // before assigning multipart form values.
     }
 }

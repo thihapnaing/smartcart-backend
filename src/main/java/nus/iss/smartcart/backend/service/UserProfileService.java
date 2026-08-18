@@ -222,10 +222,6 @@ public class UserProfileService {
 
         try {
 
-            Path uploadDirectory =
-                    Paths.get("upload");
-
-
             // Create upload folder
             Files.createDirectories(
                     uploadDirectory

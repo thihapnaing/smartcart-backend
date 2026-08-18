@@ -738,7 +738,7 @@ class UserProfileServiceTest {
      */
     @Test
     void saveAvatar_emptyAvatar()
-            throws Exception {
+    {
 
         MultipartFile avatar =
                 mock(MultipartFile.class);

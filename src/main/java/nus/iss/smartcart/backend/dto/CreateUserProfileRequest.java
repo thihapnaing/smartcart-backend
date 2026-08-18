@@ -24,5 +24,7 @@ public class CreateUserProfileRequest {
     private String avatarUrl;
 
     public CreateUserProfileRequest() {
+        // Required by the controller to construct the request DTO
+        // before assigning multipart form values.
     }
 }

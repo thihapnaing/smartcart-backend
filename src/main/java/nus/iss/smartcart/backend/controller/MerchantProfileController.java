@@ -32,7 +32,7 @@ public class MerchantProfileController {
             value = "/profile",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE
     )
-    public ResponseEntity<?> createMerchantProfile(
+    public ResponseEntity<MerchantProfile> createMerchantProfile(
 
             @RequestParam("userId")
             Long userId,

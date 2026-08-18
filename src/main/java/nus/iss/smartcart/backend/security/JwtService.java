@@ -7,7 +7,7 @@ import nus.iss.smartcart.backend.model.User;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.util.Date;
+import java.time.Instant;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -37,10 +37,10 @@ public class JwtService {
 
     public String generateToken(User user) {
 
-        Date now = new Date();
+        Instant now = Instant.now();
 
-        Date expiration =
-                new Date(now.getTime() + expirationMs);
+        Instant expiration =
+                now.plusMillis(expirationMs);
 
         return Jwts.builder()
 
@@ -53,9 +53,9 @@ public class JwtService {
 
                 .claim("role", user.getRole().name())
 
-                .issuedAt(now)
+                .issuedAt(java.util.Date.from(now))
 
-                .expiration(expiration)
+                .expiration(java.util.Date.from(expiration))
 
                 .signWith(secretKey)
 
@@ -90,9 +90,10 @@ public class JwtService {
                     .getSubject()
                     .equals(user.getEmail())
 
-                    && !claims
+                    && claims
                     .getExpiration()
-                    .before(new Date());
+                    .toInstant()
+                    .isAfter(Instant.now());
 
         } catch (Exception e) {
 

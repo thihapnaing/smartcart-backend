@@ -61,6 +61,17 @@ CVE-2025-69720
 # clean across builds.
 CVE-2026-53615
 
+# openssl / libssl3t64 / openssl-provider-legacy: DoS via unbounded memory
+# growth in OpenSSL's native QUIC *server* (Listener) implementation, which
+# only triggers when an app accepts inbound QUIC connections through
+# OpenSSL's own SSL_accept()-based QUIC API. No fix is available yet
+# upstream/in Debian as of this writing (Trivy status: fix_deferred).
+# This service only ever speaks plain HTTP/TCP via uvicorn - confirmed no
+# QUIC-capable package (aioquic, qh3, etc.) is installed anywhere in the
+# image - so the vulnerable code path is never reached. Re-review once
+# Debian ships a fixed openssl package.
+CVE-2026-14456
+
 # msgpack / setuptools: not our project's dependencies (those are pinned to
 # fixed versions - msgpack 1.2.1, setuptools 78.1.1+ - in requirements.txt).
 # These findings are pip's own internal vendored copies, declared in

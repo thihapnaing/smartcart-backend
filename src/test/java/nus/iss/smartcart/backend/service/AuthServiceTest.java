@@ -11,6 +11,8 @@ import nus.iss.smartcart.backend.security.JwtService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -159,87 +161,40 @@ class AuthServiceTest {
         assertEquals("MERCHANT", response.getRole());
     }
 
-    @Test
-    void registerMerchant_shouldRejectMissingPassword() {
-        RegisterRequest request = mock(RegisterRequest.class);
-        when(request.getUsername()).thenReturn("merchant123");
-        when(request.getEmail()).thenReturn("merchant@example.com");
-        when(request.getPassword()).thenReturn(" ");
+    @ParameterizedTest
+    @CsvSource({
+            "' ', 'Password is required'",
+            "'abc12', 'Password must be at least 6 characters'",
+            "'password123', 'Password must contain at least one uppercase letter'",
+            "'PASSWORD123', 'Password must contain at least one lowercase letter'",
+            "'Password', 'Password must contain at least one number'"
+    })
+    void registerMerchant_shouldRejectInvalidPassword(
+            String password,
+            String expectedMessage
+    ) {
 
-        IllegalArgumentException e = assertThrows(
-                IllegalArgumentException.class,
-                () -> authService.registerMerchant(request)
-        );
+        RegisterRequest request =
+                mock(RegisterRequest.class);
 
-        assertEquals("Password is required", e.getMessage());
-    }
+        when(request.getUsername())
+                .thenReturn("merchant123");
 
-    @Test
-    void registerMerchant_shouldRejectShortPassword() {
-        RegisterRequest request = mock(RegisterRequest.class);
-        when(request.getUsername()).thenReturn("merchant123");
-        when(request.getEmail()).thenReturn("merchant@example.com");
-        when(request.getPassword()).thenReturn("abc12");
+        when(request.getEmail())
+                .thenReturn("merchant@example.com");
 
-        IllegalArgumentException e = assertThrows(
-                IllegalArgumentException.class,
-                () -> authService.registerMerchant(request)
-        );
+        when(request.getPassword())
+                .thenReturn(password);
 
-        assertEquals("Password must be at least 6 characters", e.getMessage());
-    }
-
-    @Test
-    void registerMerchant_shouldRejectPasswordWithoutUppercase() {
-        RegisterRequest request = mock(RegisterRequest.class);
-        when(request.getUsername()).thenReturn("merchant123");
-        when(request.getEmail()).thenReturn("merchant@example.com");
-        when(request.getPassword()).thenReturn("password123");
-
-        IllegalArgumentException e = assertThrows(
-                IllegalArgumentException.class,
-                () -> authService.registerMerchant(request)
-        );
+        IllegalArgumentException exception =
+                assertThrows(
+                        IllegalArgumentException.class,
+                        () -> authService.registerMerchant(request)
+                );
 
         assertEquals(
-                "Password must contain at least one uppercase letter",
-                e.getMessage()
-        );
-    }
-
-    @Test
-    void registerMerchant_shouldRejectPasswordWithoutLowercase() {
-        RegisterRequest request = mock(RegisterRequest.class);
-        when(request.getUsername()).thenReturn("merchant123");
-        when(request.getEmail()).thenReturn("merchant@example.com");
-        when(request.getPassword()).thenReturn("PASSWORD123");
-
-        IllegalArgumentException e = assertThrows(
-                IllegalArgumentException.class,
-                () -> authService.registerMerchant(request)
-        );
-
-        assertEquals(
-                "Password must contain at least one lowercase letter",
-                e.getMessage()
-        );
-    }
-
-    @Test
-    void registerMerchant_shouldRejectPasswordWithoutNumber() {
-        RegisterRequest request = mock(RegisterRequest.class);
-        when(request.getUsername()).thenReturn("merchant123");
-        when(request.getEmail()).thenReturn("merchant@example.com");
-        when(request.getPassword()).thenReturn("Password");
-
-        IllegalArgumentException e = assertThrows(
-                IllegalArgumentException.class,
-                () -> authService.registerMerchant(request)
-        );
-
-        assertEquals(
-                "Password must contain at least one number",
-                e.getMessage()
+                expectedMessage,
+                exception.getMessage()
         );
     }
 
@@ -351,7 +306,7 @@ class AuthServiceTest {
         authService.changePassword(request);
 
         assertEquals("encodedNew", user.getPassword());
-        assertNotEquals(Boolean.TRUE, user.getMustChangePassword());
+        assertFalse(Boolean.TRUE.equals(user.getMustChangePassword()));
 
         verify(userRepository).save(user);
     }

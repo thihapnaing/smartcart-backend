@@ -103,30 +103,6 @@ public class OrderService {
                 .toList();
     }
 
-    @Transactional
-    public UpdateOrderStatusResponse updateOrderStatus(Long orderId, OrderStatus newStatus) {
-        User merchant = currentUserProvider.getCurrentMerchant();
-
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new EntityNotFoundException("Order not found"));
-
-        // Make sure this order actually contains a product belonging to the
-        // merchant making the request, so one merchant cannot update another
-        // merchant's orders.
-        List<OrderItem> orderItems = orderItemRepository.findByOrderId(orderId);
-        boolean belongsToMerchant = orderItems.stream()
-                .anyMatch(item -> item.getProductVariant().getProduct().getMerchant().getId().equals(merchant.getId()));
-
-        if (!belongsToMerchant) {
-            throw new EntityNotFoundException("Order not found");
-        }
-
-        order.setStatus(newStatus);
-        orderRepository.save(order);
-
-        return new UpdateOrderStatusResponse(order.getId(), order.getStatus().name());
-    }
-
     private CheckoutResponse buildCheckOutResponse(Order order, CheckoutRequest checkoutRequest) {
         List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
         List<CartItemDetail> cartItemDetails = orderItems
@@ -175,6 +151,8 @@ public class OrderService {
                 .unitPrice(orderItem.getUnitPrice())
                 .subtotal(orderItem.getUnitPrice().multiply(BigDecimal.valueOf(orderItem.getQuantity())))
                 .orderStatus(orderItem.getOrder().getStatus().name())
+                .orderDate(orderItem.getOrder().getOrderDate())
+                .deliveredAt(orderItem.getOrder().getDeliveredAt())
                 .buyerFirstName(orderItem.getOrder().getFirstName())
                 .buyerLastName(orderItem.getOrder().getLastName())
                 .build();

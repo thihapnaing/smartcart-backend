@@ -351,7 +351,7 @@ class AuthServiceTest {
         authService.changePassword(request);
 
         assertEquals("encodedNew", user.getPassword());
-        assertFalse(Boolean.TRUE.equals(user.getMustChangePassword()));
+        assertNotEquals(Boolean.TRUE, user.getMustChangePassword());
 
         verify(userRepository).save(user);
     }

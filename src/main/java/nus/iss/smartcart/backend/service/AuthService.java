@@ -43,6 +43,13 @@ public class AuthService {
             );
         }
 
+        if (request.getUsername().contains(" ")) {
+
+            throw new IllegalArgumentException(
+                    "Username shouldn't have space"
+            );
+        }
+
         if (request.getEmail() == null ||
                 request.getEmail().isBlank()) {
 
@@ -111,6 +118,13 @@ public class AuthService {
 
             throw new IllegalArgumentException(
                     "Username is required"
+            );
+        }
+
+        if (request.getUsername().contains(" ")) {
+
+            throw new IllegalArgumentException(
+                    "Username shouldn't have space"
             );
         }
 

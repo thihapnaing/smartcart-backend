@@ -2,36 +2,33 @@ package nus.iss.smartcart.backend.service;
 
 import nus.iss.smartcart.backend.dto.CreateMerchantProfileRequest;
 import nus.iss.smartcart.backend.model.MerchantProfile;
+import nus.iss.smartcart.backend.model.MerchantVerificationStatus;
 import nus.iss.smartcart.backend.model.User;
 import nus.iss.smartcart.backend.model.UserRole;
 import nus.iss.smartcart.backend.repository.MerchantProfileRepository;
 import nus.iss.smartcart.backend.repository.UserRepository;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class MerchantProfileServiceTest {
@@ -42,94 +39,84 @@ class MerchantProfileServiceTest {
     @Mock
     private UserRepository userRepository;
 
-    @InjectMocks
-    private MerchantProfileService merchantProfileService;
+    @Mock
+    private CreateMerchantProfileRequest request;
 
-    private User merchantUser;
+    private MerchantProfileService service;
+
+    private final Path uploadDirectory =
+            Paths.get("upload", "merchant")
+                    .toAbsolutePath()
+                    .normalize();
 
     @BeforeEach
     void setUp() {
-
-        merchantUser = mock(User.class);
-
-        lenient().when(merchantUser.getId())
-                .thenReturn(1L);
-
-        lenient().when(merchantUser.getRole())
-                .thenReturn(UserRole.MERCHANT);
-    }
-
-    // SUCCESSFUL MERCHANT PROFILE CREATION
-    @Test
-    void createMerchantProfile_success() throws Exception {
-
-        CreateMerchantProfileRequest request =
-                createValidRequest();
-
-        MultipartFile document =
-                createPdfFile();
-
-        lenient().when(request.getRegistrationDocument())
-                .thenReturn(document);
-
-        lenient().when(request.getLogo())
-                .thenReturn(null);
-
-        prepareValidUser();
-
-        MerchantProfile savedProfile =
-                new MerchantProfile();
-
-        when(merchantProfileRepository.save(
-                any(MerchantProfile.class)
-        )).thenReturn(savedProfile);
-
-        MerchantProfile result =
-                merchantProfileService.createMerchantProfile(
-                        request
-                );
-
-        assertNotNull(result);
-
-        assertEquals(
-                savedProfile,
-                result
+        service = new MerchantProfileService(
+                merchantProfileRepository,
+                userRepository
         );
-
-        verify(userRepository)
-                .findById(1L);
-
-        verify(merchantProfileRepository)
-                .existsByUserId(1L);
-
-        verify(merchantProfileRepository)
-                .existsByUen("UEN123456");
-
-        verify(merchantProfileRepository)
-                .save(any(MerchantProfile.class));
     }
 
-    // USER ID REQUIRED
+    @AfterEach
+    void cleanupUploadedFiles() throws IOException {
+        if (Files.exists(uploadDirectory)) {
+            try (var files = Files.list(uploadDirectory)) {
+                files.forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException ignored) {
+                        // Test cleanup only.
+                    }
+                });
+            }
+
+            Files.deleteIfExists(uploadDirectory);
+        }
+    }
+
+    // =========================================================
+    // REQUEST VALIDATION
+    // =========================================================
+
     @Test
-    void createMerchantProfile_userIdRequired() {
-
-        CreateMerchantProfileRequest request =
-                mock(CreateMerchantProfileRequest.class);
-
-        when(request.getUserId())
-                .thenReturn(null);
+    void createMerchantProfile_shouldRejectNullRequest() {
 
         ResponseStatusException exception =
                 assertThrows(
                         ResponseStatusException.class,
-                        () ->
-                                merchantProfileService
-                                        .createMerchantProfile(request)
+                        () -> service.createMerchantProfile(null)
                 );
 
         assertEquals(
-                400,
-                exception.getStatusCode().value()
+                HttpStatus.BAD_REQUEST,
+                exception.getStatusCode()
+        );
+
+        assertEquals(
+                "Request is required.",
+                exception.getReason()
+        );
+
+        verifyNoInteractions(
+                merchantProfileRepository,
+                userRepository
+        );
+    }
+
+    @Test
+    void createMerchantProfile_shouldRejectMissingUserId() {
+
+        when(request.getUserId()).thenReturn(null);
+
+        ResponseStatusException exception =
+                assertThrows(
+                        ResponseStatusException.class,
+                        () -> service.createMerchantProfile(request)
+                );
+
+        assertEquals(
+                HttpStatus.BAD_REQUEST,
+                exception.getStatusCode()
         );
 
         assertEquals(
@@ -138,81 +125,92 @@ class MerchantProfileServiceTest {
         );
 
         verifyNoInteractions(
-                userRepository,
-                merchantProfileRepository
+                merchantProfileRepository,
+                userRepository
         );
     }
 
-    // USER NOT FOUND
+    // =========================================================
+    // USER VALIDATION
+    // =========================================================
+
     @Test
-    void createMerchantProfile_userNotFound() {
+    void createMerchantProfile_shouldRejectUnknownUser() {
 
-        CreateMerchantProfileRequest request =
-                createValidRequest();
+        when(request.getUserId()).thenReturn(99L);
 
-        when(userRepository.findById(1L))
+        when(userRepository.findById(99L))
                 .thenReturn(Optional.empty());
 
         ResponseStatusException exception =
                 assertThrows(
                         ResponseStatusException.class,
-                        () ->
-                                merchantProfileService
-                                        .createMerchantProfile(request)
+                        () -> service.createMerchantProfile(request)
                 );
 
         assertEquals(
-                404,
-                exception.getStatusCode().value()
+                HttpStatus.NOT_FOUND,
+                exception.getStatusCode()
         );
 
         assertEquals(
                 "User not found.",
                 exception.getReason()
         );
+
+        verify(userRepository).findById(99L);
+
+        verifyNoInteractions(
+                merchantProfileRepository
+        );
     }
 
-    // USER IS NOT MERCHANT
     @Test
-    void createMerchantProfile_userIsNotMerchant() {
+    void createMerchantProfile_shouldRejectNonMerchantUser() {
 
-        CreateMerchantProfileRequest request =
-                createValidRequest();
+        when(request.getUserId()).thenReturn(1L);
+
+        User user = new User();
+        user.setId(1L);
+        user.setRole(UserRole.CUSTOMER);
 
         when(userRepository.findById(1L))
-                .thenReturn(Optional.of(merchantUser));
-
-        when(merchantUser.getRole())
-                .thenReturn(UserRole.CUSTOMER);
+                .thenReturn(Optional.of(user));
 
         ResponseStatusException exception =
                 assertThrows(
                         ResponseStatusException.class,
-                        () ->
-                                merchantProfileService
-                                        .createMerchantProfile(request)
+                        () -> service.createMerchantProfile(request)
                 );
 
         assertEquals(
-                403,
-                exception.getStatusCode().value()
+                HttpStatus.FORBIDDEN,
+                exception.getStatusCode()
         );
 
         assertEquals(
                 "Only merchant accounts can create a merchant profile.",
                 exception.getReason()
         );
+
+        verify(userRepository).findById(1L);
+
+        verifyNoInteractions(
+                merchantProfileRepository
+        );
     }
 
-    // PROFILE ALREADY EXISTS
     @Test
-    void createMerchantProfile_profileAlreadyExists() {
+    void createMerchantProfile_shouldRejectExistingProfile() {
 
-        CreateMerchantProfileRequest request =
-                createValidRequest();
+        when(request.getUserId()).thenReturn(1L);
+
+        User user = new User();
+        user.setId(1L);
+        user.setRole(UserRole.MERCHANT);
 
         when(userRepository.findById(1L))
-                .thenReturn(Optional.of(merchantUser));
+                .thenReturn(Optional.of(user));
 
         when(merchantProfileRepository.existsByUserId(1L))
                 .thenReturn(true);
@@ -220,46 +218,122 @@ class MerchantProfileServiceTest {
         ResponseStatusException exception =
                 assertThrows(
                         ResponseStatusException.class,
-                        () ->
-                                merchantProfileService
-                                        .createMerchantProfile(request)
+                        () -> service.createMerchantProfile(request)
                 );
 
         assertEquals(
-                409,
-                exception.getStatusCode().value()
+                HttpStatus.CONFLICT,
+                exception.getStatusCode()
         );
 
         assertEquals(
                 "Merchant profile already exists.",
                 exception.getReason()
         );
+
+        verify(merchantProfileRepository)
+                .existsByUserId(1L);
+
+        verify(merchantProfileRepository, never())
+                .save(any(MerchantProfile.class));
     }
 
-    // BUSINESS NAME REQUIRED
+    // =========================================================
+    // UEN VALIDATION
+    // =========================================================
+
     @Test
-    void createMerchantProfile_businessNameRequired() {
+    void createMerchantProfile_shouldRejectMissingUen() {
 
-        CreateMerchantProfileRequest request =
-                createValidRequest();
+        when(request.getUserId()).thenReturn(1L);
 
-        when(request.getBusinessName())
-                .thenReturn("");
+        User user = merchantUser(1L);
 
-        prepareValidUser();
+        when(userRepository.findById(1L))
+                .thenReturn(Optional.of(user));
+
+        when(merchantProfileRepository.existsByUserId(1L))
+                .thenReturn(false);
+
+        when(request.getUen()).thenReturn(" ");
 
         ResponseStatusException exception =
                 assertThrows(
                         ResponseStatusException.class,
-                        () ->
-                                merchantProfileService
-                                        .createMerchantProfile(request)
+                        () -> service.createMerchantProfile(request)
                 );
 
         assertEquals(
-                400,
-                exception.getStatusCode().value()
+                HttpStatus.BAD_REQUEST,
+                exception.getStatusCode()
         );
+
+        assertEquals(
+                "UEN is required.",
+                exception.getReason()
+        );
+
+        verify(merchantProfileRepository, never())
+                .existsByUen(anyString());
+    }
+
+    @Test
+    void createMerchantProfile_shouldRejectDuplicateUen() {
+
+        when(request.getUserId()).thenReturn(1L);
+
+        User user = merchantUser(1L);
+
+        when(userRepository.findById(1L))
+                .thenReturn(Optional.of(user));
+
+        when(merchantProfileRepository.existsByUserId(1L))
+                .thenReturn(false);
+
+        when(request.getUen())
+                .thenReturn(" 201912345A ");
+
+        when(merchantProfileRepository.existsByUen("201912345A"))
+                .thenReturn(true);
+
+        ResponseStatusException exception =
+                assertThrows(
+                        ResponseStatusException.class,
+                        () -> service.createMerchantProfile(request)
+                );
+
+        assertEquals(
+                HttpStatus.CONFLICT,
+                exception.getStatusCode()
+        );
+
+        assertEquals(
+                "UEN is already registered.",
+                exception.getReason()
+        );
+
+        verify(merchantProfileRepository)
+                .existsByUen("201912345A");
+    }
+
+    // =========================================================
+    // BUSINESS INFORMATION VALIDATION
+    // =========================================================
+
+    @Test
+    void createMerchantProfile_shouldRejectMissingBusinessName() {
+
+        prepareRequestBeforeBusinessValidation();
+
+        when(request.getBusinessName()).thenReturn(" ");
+
+        ResponseStatusException exception =
+                assertThrows(
+                        ResponseStatusException.class,
+                        () -> service.createMerchantProfile(request)
+                );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
 
         assertEquals(
                 "Business name is required.",
@@ -267,93 +341,21 @@ class MerchantProfileServiceTest {
         );
     }
 
-    // UEN REQUIRED
     @Test
-    void createMerchantProfile_uenRequired() {
+    void createMerchantProfile_shouldRejectMissingBusinessType() {
 
-        CreateMerchantProfileRequest request =
-                createValidRequest();
+        prepareRequestBeforeBusinessValidation();
 
-        when(request.getUen())
-                .thenReturn("");
-
-        prepareValidUser();
+        when(request.getBusinessName()).thenReturn("SmartCart Store");
+        when(request.getBusinessType()).thenReturn(" ");
 
         ResponseStatusException exception =
                 assertThrows(
                         ResponseStatusException.class,
-                        () ->
-                                merchantProfileService
-                                        .createMerchantProfile(request)
+                        () -> service.createMerchantProfile(request)
                 );
 
-        assertEquals(
-                400,
-                exception.getStatusCode().value()
-        );
-
-        assertEquals(
-                "UEN is required.",
-                exception.getReason()
-        );
-    }
-
-    // DUPLICATE UEN
-    @Test
-    void createMerchantProfile_duplicateUen() {
-
-        CreateMerchantProfileRequest request =
-                createValidRequest();
-
-        prepareValidUser();
-
-        when(merchantProfileRepository.existsByUen(
-                "UEN123456"
-        )).thenReturn(true);
-
-        ResponseStatusException exception =
-                assertThrows(
-                        ResponseStatusException.class,
-                        () ->
-                                merchantProfileService
-                                        .createMerchantProfile(request)
-                );
-
-        assertEquals(
-                409,
-                exception.getStatusCode().value()
-        );
-
-        assertEquals(
-                "UEN is already registered.",
-                exception.getReason()
-        );
-    }
-
-    // BUSINESS TYPE REQUIRED
-    @Test
-    void createMerchantProfile_businessTypeRequired() {
-
-        CreateMerchantProfileRequest request =
-                createValidRequest();
-
-        when(request.getBusinessType())
-                .thenReturn("");
-
-        prepareValidUser();
-
-        ResponseStatusException exception =
-                assertThrows(
-                        ResponseStatusException.class,
-                        () ->
-                                merchantProfileService
-                                        .createMerchantProfile(request)
-                );
-
-        assertEquals(
-                400,
-                exception.getStatusCode().value()
-        );
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
 
         assertEquals(
                 "Business type is required.",
@@ -361,31 +363,22 @@ class MerchantProfileServiceTest {
         );
     }
 
-
-    // BUSINESS ADDRESS REQUIRED
     @Test
-    void createMerchantProfile_businessAddressRequired() {
+    void createMerchantProfile_shouldRejectMissingBusinessAddress() {
 
-        CreateMerchantProfileRequest request =
-                createValidRequest();
+        prepareRequestBeforeBusinessValidation();
 
-        when(request.getBusinessAddress())
-                .thenReturn("");
-
-        prepareValidUser();
+        when(request.getBusinessName()).thenReturn("SmartCart Store");
+        when(request.getBusinessType()).thenReturn("Retail");
+        when(request.getBusinessAddress()).thenReturn(" ");
 
         ResponseStatusException exception =
                 assertThrows(
                         ResponseStatusException.class,
-                        () ->
-                                merchantProfileService
-                                        .createMerchantProfile(request)
+                        () -> service.createMerchantProfile(request)
                 );
 
-        assertEquals(
-                400,
-                exception.getStatusCode().value()
-        );
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
 
         assertEquals(
                 "Business address is required.",
@@ -393,30 +386,23 @@ class MerchantProfileServiceTest {
         );
     }
 
-    // POSTAL CODE REQUIRED
     @Test
-    void createMerchantProfile_postalCodeRequired() {
+    void createMerchantProfile_shouldRejectMissingPostalCode() {
 
-        CreateMerchantProfileRequest request =
-                createValidRequest();
+        prepareRequestBeforeBusinessValidation();
 
-        when(request.getPostalCode())
-                .thenReturn("");
-
-        prepareValidUser();
+        when(request.getBusinessName()).thenReturn("SmartCart Store");
+        when(request.getBusinessType()).thenReturn("Retail");
+        when(request.getBusinessAddress()).thenReturn("Singapore");
+        when(request.getPostalCode()).thenReturn(" ");
 
         ResponseStatusException exception =
                 assertThrows(
                         ResponseStatusException.class,
-                        () ->
-                                merchantProfileService
-                                        .createMerchantProfile(request)
+                        () -> service.createMerchantProfile(request)
                 );
 
-        assertEquals(
-                400,
-                exception.getStatusCode().value()
-        );
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
 
         assertEquals(
                 "Postal code is required.",
@@ -424,30 +410,24 @@ class MerchantProfileServiceTest {
         );
     }
 
-    // CONTACT NUMBER REQUIRED
     @Test
-    void createMerchantProfile_contactNumberRequired() {
+    void createMerchantProfile_shouldRejectMissingContactNumber() {
 
-        CreateMerchantProfileRequest request =
-                createValidRequest();
+        prepareRequestBeforeBusinessValidation();
 
-        when(request.getContactNumber())
-                .thenReturn("");
-
-        prepareValidUser();
+        when(request.getBusinessName()).thenReturn("SmartCart Store");
+        when(request.getBusinessType()).thenReturn("Retail");
+        when(request.getBusinessAddress()).thenReturn("Singapore");
+        when(request.getPostalCode()).thenReturn("123456");
+        when(request.getContactNumber()).thenReturn(" ");
 
         ResponseStatusException exception =
                 assertThrows(
                         ResponseStatusException.class,
-                        () ->
-                                merchantProfileService
-                                        .createMerchantProfile(request)
+                        () -> service.createMerchantProfile(request)
                 );
 
-        assertEquals(
-                400,
-                exception.getStatusCode().value()
-        );
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
 
         assertEquals(
                 "Contact number is required.",
@@ -455,30 +435,25 @@ class MerchantProfileServiceTest {
         );
     }
 
-    // PRODUCT CATEGORY REQUIRED
     @Test
-    void createMerchantProfile_productCategoryRequired() {
+    void createMerchantProfile_shouldRejectMissingProductCategory() {
 
-        CreateMerchantProfileRequest request =
-                createValidRequest();
+        prepareRequestBeforeBusinessValidation();
 
-        when(request.getProductCategory())
-                .thenReturn("");
-
-        prepareValidUser();
+        when(request.getBusinessName()).thenReturn("SmartCart Store");
+        when(request.getBusinessType()).thenReturn("Retail");
+        when(request.getBusinessAddress()).thenReturn("Singapore");
+        when(request.getPostalCode()).thenReturn("123456");
+        when(request.getContactNumber()).thenReturn("91234567");
+        when(request.getProductCategory()).thenReturn(" ");
 
         ResponseStatusException exception =
                 assertThrows(
                         ResponseStatusException.class,
-                        () ->
-                                merchantProfileService
-                                        .createMerchantProfile(request)
+                        () -> service.createMerchantProfile(request)
                 );
 
-        assertEquals(
-                400,
-                exception.getStatusCode().value()
-        );
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
 
         assertEquals(
                 "Product category is required.",
@@ -486,31 +461,26 @@ class MerchantProfileServiceTest {
         );
     }
 
-
-    // BUSINESS DESCRIPTION REQUIRED
     @Test
-    void createMerchantProfile_businessDescriptionRequired() {
+    void createMerchantProfile_shouldRejectMissingBusinessDescription() {
 
-        CreateMerchantProfileRequest request =
-                createValidRequest();
+        prepareRequestBeforeBusinessValidation();
 
-        when(request.getBusinessDescription())
-                .thenReturn("");
-
-        prepareValidUser();
+        when(request.getBusinessName()).thenReturn("SmartCart Store");
+        when(request.getBusinessType()).thenReturn("Retail");
+        when(request.getBusinessAddress()).thenReturn("Singapore");
+        when(request.getPostalCode()).thenReturn("123456");
+        when(request.getContactNumber()).thenReturn("91234567");
+        when(request.getProductCategory()).thenReturn("Fashion");
+        when(request.getBusinessDescription()).thenReturn(" ");
 
         ResponseStatusException exception =
                 assertThrows(
                         ResponseStatusException.class,
-                        () ->
-                                merchantProfileService
-                                        .createMerchantProfile(request)
+                        () -> service.createMerchantProfile(request)
                 );
 
-        assertEquals(
-                400,
-                exception.getStatusCode().value()
-        );
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
 
         assertEquals(
                 "Business description is required.",
@@ -518,30 +488,56 @@ class MerchantProfileServiceTest {
         );
     }
 
-    // REGISTRATION DOCUMENT REQUIRED
+    // =========================================================
+    // REGISTRATION DOCUMENT VALIDATION
+    // =========================================================
+
     @Test
-    void createMerchantProfile_registrationDocumentRequired() {
+    void createMerchantProfile_shouldRejectMissingRegistrationDocument() {
 
-        CreateMerchantProfileRequest request =
-                createValidRequest();
+        prepareRequestBeforeFileValidation();
 
-        when(request.getRegistrationDocument())
-                .thenReturn(null);
-
-        prepareValidUser();
+        when(request.getLogo()).thenReturn(null);
+        when(request.getRegistrationDocument()).thenReturn(null);
 
         ResponseStatusException exception =
                 assertThrows(
                         ResponseStatusException.class,
-                        () ->
-                                merchantProfileService
-                                        .createMerchantProfile(request)
+                        () -> service.createMerchantProfile(request)
                 );
 
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+
         assertEquals(
-                400,
-                exception.getStatusCode().value()
+                "Business registration document is required.",
+                exception.getReason()
         );
+
+        verify(merchantProfileRepository, never())
+                .save(any(MerchantProfile.class));
+    }
+
+    @Test
+    void createMerchantProfile_shouldRejectEmptyRegistrationDocument() {
+
+        prepareRequestBeforeFileValidation();
+
+        MultipartFile document =
+                mock(MultipartFile.class);
+
+        when(request.getLogo()).thenReturn(null);
+        when(request.getRegistrationDocument())
+                .thenReturn(document);
+
+        when(document.isEmpty()).thenReturn(true);
+
+        ResponseStatusException exception =
+                assertThrows(
+                        ResponseStatusException.class,
+                        () -> service.createMerchantProfile(request)
+                );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
 
         assertEquals(
                 "Business registration document is required.",
@@ -549,167 +545,29 @@ class MerchantProfileServiceTest {
         );
     }
 
-    // INVALID LOGO TYPE
     @Test
-    void createMerchantProfile_invalidLogoType()
-            throws Exception {
+    void createMerchantProfile_shouldRejectRegistrationDocumentLargerThan5Mb() {
 
-        CreateMerchantProfileRequest request =
-                createValidRequest();
-
-        MultipartFile logo =
-                createFile(
-                        "logo.gif",
-                        "image/gif",
-                        1000
-                );
+        prepareRequestBeforeFileValidation();
 
         MultipartFile document =
-                createPdfFile();
+                mock(MultipartFile.class);
 
-        lenient().when(request.getLogo())
-                .thenReturn(logo);
-
-        lenient().when(request.getRegistrationDocument())
+        when(request.getLogo()).thenReturn(null);
+        when(request.getRegistrationDocument())
                 .thenReturn(document);
 
-        prepareValidUser();
+        when(document.isEmpty()).thenReturn(false);
+        when(document.getSize())
+                .thenReturn(5L * 1024L * 1024L + 1);
 
         ResponseStatusException exception =
                 assertThrows(
                         ResponseStatusException.class,
-                        () ->
-                                merchantProfileService
-                                        .createMerchantProfile(request)
+                        () -> service.createMerchantProfile(request)
                 );
 
-        assertEquals(
-                400,
-                exception.getStatusCode().value()
-        );
-
-        assertEquals(
-                "Business logo must be JPG, PNG or WEBP.",
-                exception.getReason()
-        );
-    }
-
-    // LOGO TOO LARGE
-    @Test
-    void createMerchantProfile_logoTooLarge()
-            throws Exception {
-
-        CreateMerchantProfileRequest request =
-                createValidRequest();
-
-        MultipartFile logo =
-                createFile(
-                        "logo.jpg",
-                        "image/jpeg",
-                        2L * 1024L * 1024L + 1
-                );
-
-        MultipartFile document =
-                createPdfFile();
-
-        lenient().when(request.getLogo())
-                .thenReturn(logo);
-
-        lenient().when(request.getRegistrationDocument())
-                .thenReturn(document);
-
-        prepareValidUser();
-
-        ResponseStatusException exception =
-                assertThrows(
-                        ResponseStatusException.class,
-                        () ->
-                                merchantProfileService
-                                        .createMerchantProfile(request)
-                );
-
-        assertEquals(
-                400,
-                exception.getStatusCode().value()
-        );
-
-        assertEquals(
-                "Business logo must be smaller than 2 MB.",
-                exception.getReason()
-        );
-    }
-
-    // INVALID REGISTRATION DOCUMENT TYPE
-    @Test
-    void createMerchantProfile_invalidDocumentType()
-            throws Exception {
-
-        CreateMerchantProfileRequest request =
-                createValidRequest();
-
-        MultipartFile document =
-                createFile(
-                        "document.txt",
-                        "text/plain",
-                        1000
-                );
-
-        lenient().when(request.getRegistrationDocument())
-                .thenReturn(document);
-
-        prepareValidUser();
-
-        ResponseStatusException exception =
-                assertThrows(
-                        ResponseStatusException.class,
-                        () ->
-                                merchantProfileService
-                                        .createMerchantProfile(request)
-                );
-
-        assertEquals(
-                400,
-                exception.getStatusCode().value()
-        );
-
-        assertEquals(
-                "Business registration document must be PDF, JPG or PNG.",
-                exception.getReason()
-        );
-    }
-
-    // REGISTRATION DOCUMENT TOO LARGE
-    @Test
-    void createMerchantProfile_documentTooLarge()
-            throws Exception {
-
-        CreateMerchantProfileRequest request =
-                createValidRequest();
-
-        MultipartFile document =
-                createFile(
-                        "registration.pdf",
-                        "application/pdf",
-                        5L * 1024L * 1024L + 1
-                );
-
-        lenient().when(request.getRegistrationDocument())
-                .thenReturn(document);
-
-        prepareValidUser();
-
-        ResponseStatusException exception =
-                assertThrows(
-                        ResponseStatusException.class,
-                        () ->
-                                merchantProfileService
-                                        .createMerchantProfile(request)
-                );
-
-        assertEquals(
-                400,
-                exception.getStatusCode().value()
-        );
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
 
         assertEquals(
                 "Business registration document must be smaller than 5 MB.",
@@ -717,156 +575,204 @@ class MerchantProfileServiceTest {
         );
     }
 
-    // VALID LOGO + DOCUMENT
     @Test
-    void createMerchantProfile_validLogo()
-            throws Exception {
+    void createMerchantProfile_shouldRejectInvalidRegistrationDocumentType() {
 
-        CreateMerchantProfileRequest request =
-                createValidRequest();
-
-        MultipartFile logo =
-                createFile(
-                        "logo.png",
-                        "image/png",
-                        1000
-                );
+        prepareRequestBeforeFileValidation();
 
         MultipartFile document =
-                createPdfFile();
+                mock(MultipartFile.class);
 
-        lenient().when(request.getLogo())
-                .thenReturn(logo);
-
-        lenient().when(request.getRegistrationDocument())
+        when(request.getLogo()).thenReturn(null);
+        when(request.getRegistrationDocument())
                 .thenReturn(document);
 
-        prepareValidUser();
+        when(document.isEmpty()).thenReturn(false);
+        when(document.getSize()).thenReturn(1000L);
+        when(document.getContentType())
+                .thenReturn("text/plain");
 
-        MerchantProfile savedProfile =
-                new MerchantProfile();
+        ResponseStatusException exception =
+                assertThrows(
+                        ResponseStatusException.class,
+                        () -> service.createMerchantProfile(request)
+                );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+
+        assertEquals(
+                "Business registration document must be PDF, JPG or PNG.",
+                exception.getReason()
+        );
+    }
+
+    // =========================================================
+    // SUCCESSFUL CREATION
+    // =========================================================
+
+    @Test
+    void createMerchantProfile_shouldCreateProfileSuccessfully() {
+
+        prepareRequestBeforeFileValidation();
+
+        MultipartFile document =
+                validRegistrationDocument();
+
+        when(request.getLogo())
+                .thenReturn(null);
+
+        when(request.getRegistrationDocument())
+                .thenReturn(document);
+
+        when(request.getPickupAvailable())
+                .thenReturn(true);
 
         when(merchantProfileRepository.save(
                 any(MerchantProfile.class)
-        )).thenReturn(savedProfile);
+        )).thenAnswer(
+                invocation -> invocation.getArgument(0)
+        );
 
         MerchantProfile result =
-                merchantProfileService.createMerchantProfile(
-                        request
-                );
+                service.createMerchantProfile(request);
 
         assertNotNull(result);
 
         assertEquals(
-                savedProfile,
-                result
+                "SmartCart Store",
+                result.getBusinessName()
+        );
+
+        assertEquals(
+                "201912345A",
+                result.getUen()
+        );
+
+        assertEquals(
+                "Retail",
+                result.getBusinessType()
+        );
+
+        assertEquals(
+                "Singapore",
+                result.getBusinessAddress()
+        );
+
+        assertEquals(
+                "123456",
+                result.getPostalCode()
+        );
+
+        assertEquals(
+                "91234567",
+                result.getContactNumber()
+        );
+
+        assertEquals(
+                "Fashion",
+                result.getProductCategory()
+        );
+
+        assertEquals(
+                "Online fashion store",
+                result.getBusinessDescription()
+        );
+
+        assertTrue(
+                result.getPickupAvailable()
+        );
+
+        assertEquals(
+                MerchantVerificationStatus.PENDING,
+                result.getVerificationStatus()
         );
 
         verify(merchantProfileRepository)
                 .save(any(MerchantProfile.class));
     }
 
-    // VALID REQUEST
-    private CreateMerchantProfileRequest createValidRequest() {
+    // =========================================================
+    // HELPERS
+    // =========================================================
 
-        CreateMerchantProfileRequest request =
-                mock(CreateMerchantProfileRequest.class);
+    private User merchantUser(Long userId) {
 
-        lenient().when(request.getUserId())
-                .thenReturn(1L);
+        User user = new User();
 
-        lenient().when(request.getBusinessName())
-                .thenReturn("Smart Fashion Store");
+        user.setId(userId);
+        user.setRole(UserRole.MERCHANT);
 
-        lenient().when(request.getUen())
-                .thenReturn("UEN123456");
-
-        lenient().when(request.getBusinessType())
-                .thenReturn("Retail");
-
-        lenient().when(request.getBusinessAddress())
-                .thenReturn("123 Orchard Road");
-
-        lenient().when(request.getPostalCode())
-                .thenReturn("238888");
-
-        lenient().when(request.getContactNumber())
-                .thenReturn("+6591234567");
-
-        lenient().when(request.getProductCategory())
-                .thenReturn("Clothing");
-
-        lenient().when(request.getBusinessDescription())
-                .thenReturn(
-                        "Smart fashion products for customers."
-                );
-
-        lenient().when(request.getPickupAvailable())
-                .thenReturn(true);
-
-        return request;
+        return user;
     }
 
-    // VALID USER / REPOSITORY SETUP
-    private void prepareValidUser() {
+    private void prepareRequestBeforeBusinessValidation() {
 
-        lenient().when(userRepository.findById(1L))
-                .thenReturn(Optional.of(merchantUser));
+        when(request.getUserId()).thenReturn(1L);
 
-        lenient().when(
-                merchantProfileRepository.existsByUserId(1L)
-        ).thenReturn(false);
+        User user = merchantUser(1L);
 
-        lenient().when(
-                merchantProfileRepository.existsByUen(
-                        "UEN123456"
-                )
-        ).thenReturn(false);
-    }
+        when(userRepository.findById(1L))
+                .thenReturn(Optional.of(user));
 
-    // CREATE MOCK FILE
-    private MultipartFile createFile(
-            String filename,
-            String contentType,
-            long size
-    ) throws Exception {
-
-        MultipartFile file =
-                mock(MultipartFile.class);
-
-        lenient().when(file.isEmpty())
+        when(merchantProfileRepository.existsByUserId(1L))
                 .thenReturn(false);
 
-        lenient().when(file.getOriginalFilename())
-                .thenReturn(filename);
+        when(request.getUen())
+                .thenReturn("201912345A");
 
-        lenient().when(file.getContentType())
-                .thenReturn(contentType);
-
-        lenient().when(file.getSize())
-                .thenReturn(size);
-
-        lenient().when(file.getInputStream())
-                .thenReturn(
-                        new ByteArrayInputStream(
-                                "test file"
-                                        .getBytes(
-                                                StandardCharsets.UTF_8
-                                        )
-                        )
-                );
-
-        return file;
+        when(merchantProfileRepository.existsByUen("201912345A"))
+                .thenReturn(false);
     }
 
-    // CREATE PDF FILE
-    private MultipartFile createPdfFile()
-            throws Exception {
+    private void prepareRequestBeforeFileValidation() {
 
-        return createFile(
-                "registration.pdf",
-                "application/pdf",
-                1000
-        );
+        prepareRequestBeforeBusinessValidation();
+
+        when(request.getBusinessName())
+                .thenReturn("SmartCart Store");
+
+        when(request.getBusinessType())
+                .thenReturn("Retail");
+
+        when(request.getBusinessAddress())
+                .thenReturn("Singapore");
+
+        when(request.getPostalCode())
+                .thenReturn("123456");
+
+        when(request.getContactNumber())
+                .thenReturn("91234567");
+
+        when(request.getProductCategory())
+                .thenReturn("Fashion");
+
+        when(request.getBusinessDescription())
+                .thenReturn("Online fashion store");
+    }
+
+    private MultipartFile validRegistrationDocument() {
+
+        MultipartFile document =
+                mock(MultipartFile.class);
+
+        when(document.isEmpty()).thenReturn(false);
+        when(document.getSize()).thenReturn(1000L);
+        when(document.getContentType())
+                .thenReturn("application/pdf");
+        when(document.getOriginalFilename())
+                .thenReturn("registration.pdf");
+
+        try {
+            when(document.getInputStream())
+                    .thenReturn(
+                            new java.io.ByteArrayInputStream(
+                                    "test document".getBytes()
+                            )
+                    );
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        return document;
     }
 }

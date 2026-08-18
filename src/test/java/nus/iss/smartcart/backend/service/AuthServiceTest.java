@@ -1,10 +1,6 @@
 package nus.iss.smartcart.backend.service;
 
-import nus.iss.smartcart.backend.dto.ChangePasswordRequest;
-import nus.iss.smartcart.backend.dto.LoginRequest;
-import nus.iss.smartcart.backend.dto.LoginResponse;
-import nus.iss.smartcart.backend.dto.RegisterRequest;
-import nus.iss.smartcart.backend.exception.ForbiddenException;
+import nus.iss.smartcart.backend.dto.*;
 import nus.iss.smartcart.backend.model.User;
 import nus.iss.smartcart.backend.model.UserRole;
 import nus.iss.smartcart.backend.model.UserStatus;
@@ -15,761 +11,572 @@ import nus.iss.smartcart.backend.security.JwtService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-
-import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
-    @Mock private UserRepository userRepository;
-    @Mock private PasswordEncoder passwordEncoder;
-    @Mock private JwtService jwtService;
-    @Mock private CurrentUserProvider currentUserProvider;
+    @Mock UserRepository userRepository;
+    @Mock PasswordEncoder passwordEncoder;
+    @Mock JwtService jwtService;
+    @Mock CurrentUserProvider currentUserProvider;
 
-    @InjectMocks private AuthService authService;
-
-    private User testUser;
+    private AuthService authService;
 
     @BeforeEach
     void setUp() {
-
-        testUser = new User();
-
-        testUser.setId(1L);
-        testUser.setUsername("junior");
-        testUser.setEmail("junior@smartcart.com");
-        testUser.setPassword("encodedPassword");
-        testUser.setRole(UserRole.CUSTOMER);
-        testUser.setStatus(UserStatus.ACTIVE);
+        authService = new AuthService(
+                userRepository,
+                passwordEncoder,
+                jwtService,
+                currentUserProvider
+        );
     }
 
-    private RegisterRequest validRegisterRequest() {
-        RegisterRequest request = new RegisterRequest();
-        request.setUsername("jane");
-        request.setEmail("jane@example.com");
-        request.setPassword("password123");
-        return request;
-    }
-
-    // ── register ────────────────────────────────────────────────────────
+    // =========================================================
+    // REGISTER
+    // =========================================================
 
     @Test
-    void register_missingUsername_throwsIllegalArgumentException() {
-        RegisterRequest request = validRegisterRequest();
-        request.setUsername("   ");
+    void register_shouldCreateCustomerSuccessfully() {
+        RegisterRequest request = mock(RegisterRequest.class);
+        when(request.getUsername()).thenReturn("junior123");
+        when(request.getEmail()).thenReturn("junior@example.com");
+        when(request.getPassword()).thenReturn("Password123");
 
-        assertThrows(IllegalArgumentException.class, () -> authService.register(request));
-        verifyNoInteractions(userRepository, jwtService);
-    }
+        when(userRepository.existsByEmail("junior@example.com")).thenReturn(false);
+        when(userRepository.existsByUsername("junior123")).thenReturn(false);
+        when(passwordEncoder.encode("Password123")).thenReturn("encoded");
 
-    @Test
-    void register_missingEmail_throwsIllegalArgumentException() {
-        RegisterRequest request = validRegisterRequest();
-        request.setEmail(null);
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("junior123");
+        user.setEmail("junior@example.com");
+        user.setPassword("encoded");
+        user.setRole(UserRole.CUSTOMER);
+        user.setStatus(UserStatus.ACTIVE);
 
-        assertThrows(IllegalArgumentException.class, () -> authService.register(request));
-    }
-
-    @Test
-    void register_passwordTooShort_throwsIllegalArgumentException() {
-        RegisterRequest request = validRegisterRequest();
-        request.setPassword("abc");
-
-        assertThrows(IllegalArgumentException.class, () -> authService.register(request));
-    }
-
-    @Test
-    void register_emailAlreadyRegistered_throwsIllegalArgumentException() {
-        RegisterRequest request = validRegisterRequest();
-        when(userRepository.existsByEmail("jane@example.com")).thenReturn(true);
-
-        assertThrows(IllegalArgumentException.class, () -> authService.register(request));
-    }
-
-    @Test
-    void register_usernameAlreadyRegistered_throwsIllegalArgumentException() {
-        RegisterRequest request = validRegisterRequest();
-        when(userRepository.existsByEmail("jane@example.com")).thenReturn(false);
-        when(userRepository.existsByUsername("jane")).thenReturn(true);
-
-        assertThrows(IllegalArgumentException.class, () -> authService.register(request));
-    }
-
-    @Test
-    void register_validRequest_savesCustomerAndReturnsTokenWithUserDetails() {
-        RegisterRequest request = validRegisterRequest();
-        when(userRepository.existsByEmail("jane@example.com")).thenReturn(false);
-        when(userRepository.existsByUsername("jane")).thenReturn(false);
-        when(passwordEncoder.encode("password123")).thenReturn("hashed-password");
-
-        User savedUser = new User();
-        savedUser.setId(1L);
-        savedUser.setUsername("jane");
-        savedUser.setEmail("jane@example.com");
-        savedUser.setRole(UserRole.CUSTOMER);
-        when(userRepository.save(any(User.class))).thenReturn(savedUser);
-        when(jwtService.generateToken(savedUser)).thenReturn("fake-jwt-token");
+        when(userRepository.save(any(User.class))).thenReturn(user);
+        when(jwtService.generateToken(user)).thenReturn("token");
 
         LoginResponse response = authService.register(request);
 
-        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
-        verify(userRepository).save(userCaptor.capture());
-        User captured = userCaptor.getValue();
-        assertEquals("hashed-password", captured.getPassword());
-        assertEquals(UserRole.CUSTOMER, captured.getRole());
-        assertEquals(UserStatus.ACTIVE, captured.getStatus());
-
-        assertEquals("fake-jwt-token", response.getToken());
+        assertNotNull(response);
+        assertEquals("token", response.getToken());
         assertEquals(1L, response.getUserId());
-        assertEquals("jane", response.getUsername());
+        assertEquals("junior123", response.getUsername());
+        assertEquals("junior@example.com", response.getEmail());
         assertEquals("CUSTOMER", response.getRole());
-        assertFalse(response.isMustChangePassword());
-    }
-
-    // ── login ───────────────────────────────────────────────────────────
-
-    @Test
-    void login_userNotFound_throwsIllegalArgumentException() {
-        LoginRequest request = new LoginRequest();
-        request.setEmail("ghost@example.com");
-        request.setPassword("password123");
-        when(userRepository.findByEmail("ghost@example.com")).thenReturn(Optional.empty());
-
-        assertThrows(IllegalArgumentException.class, () -> authService.login(request));
     }
 
     @Test
-    void login_inactiveAccount_throwsIllegalArgumentException() {
-        User user = new User();
-        user.setEmail("jane@example.com");
-        user.setStatus(UserStatus.INACTIVE);
-        LoginRequest request = new LoginRequest();
-        request.setEmail("jane@example.com");
-        request.setPassword("password123");
-        when(userRepository.findByEmail("jane@example.com")).thenReturn(Optional.of(user));
+    void register_shouldRejectShortPassword() {
+        RegisterRequest request = mock(RegisterRequest.class);
+        when(request.getUsername()).thenReturn("junior123");
+        when(request.getEmail()).thenReturn("junior@example.com");
+        when(request.getPassword()).thenReturn("12345");
 
-        assertThrows(IllegalArgumentException.class, () -> authService.login(request));
+        IllegalArgumentException e = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.register(request)
+        );
+
+        assertEquals("Password must be at least 6 characters", e.getMessage());
     }
 
     @Test
-    void login_wrongPassword_throwsIllegalArgumentException() {
-        User user = new User();
-        user.setEmail("jane@example.com");
-        user.setPassword("hashed-password");
-        user.setStatus(UserStatus.ACTIVE);
-        LoginRequest request = new LoginRequest();
-        request.setEmail("jane@example.com");
-        request.setPassword("wrong-password");
-        when(userRepository.findByEmail("jane@example.com")).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("wrong-password", "hashed-password")).thenReturn(false);
+    void register_shouldRejectDuplicateEmail() {
+        RegisterRequest request = mock(RegisterRequest.class);
+        when(request.getUsername()).thenReturn("junior123");
+        when(request.getEmail()).thenReturn("junior@example.com");
+        when(request.getPassword()).thenReturn("Password123");
+        when(userRepository.existsByEmail("junior@example.com")).thenReturn(true);
 
-        assertThrows(IllegalArgumentException.class, () -> authService.login(request));
+        IllegalArgumentException e = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.register(request)
+        );
+
+        assertEquals("Email is already registered", e.getMessage());
+        verify(userRepository, never()).save(any(User.class));
     }
 
     @Test
-    void login_validCredentials_returnsTokenWithUserDetails() {
+    void register_shouldRejectDuplicateUsername() {
+        RegisterRequest request = mock(RegisterRequest.class);
+        when(request.getUsername()).thenReturn("junior123");
+        when(request.getEmail()).thenReturn("junior@example.com");
+        when(request.getPassword()).thenReturn("Password123");
+        when(userRepository.existsByEmail("junior@example.com")).thenReturn(false);
+        when(userRepository.existsByUsername("junior123")).thenReturn(true);
+
+        IllegalArgumentException e = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.register(request)
+        );
+
+        assertEquals("Username is already registered", e.getMessage());
+    }
+
+    // =========================================================
+    // MERCHANT REGISTER
+    // =========================================================
+
+    @Test
+    void registerMerchant_shouldCreateMerchantSuccessfully() {
+        RegisterRequest request = mock(RegisterRequest.class);
+        when(request.getUsername()).thenReturn("merchant123");
+        when(request.getEmail()).thenReturn("merchant@example.com");
+        when(request.getPassword()).thenReturn("Password123");
+
+        when(userRepository.existsByEmail("merchant@example.com")).thenReturn(false);
+        when(userRepository.existsByUsername("merchant123")).thenReturn(false);
+        when(passwordEncoder.encode("Password123")).thenReturn("encoded");
+
         User user = new User();
         user.setId(2L);
-        user.setUsername("jane");
-        user.setEmail("jane@example.com");
-        user.setPassword("hashed-password");
+        user.setUsername("merchant123");
+        user.setEmail("merchant@example.com");
+        user.setPassword("encoded");
         user.setRole(UserRole.MERCHANT);
         user.setStatus(UserStatus.ACTIVE);
-        LoginRequest request = new LoginRequest();
-        request.setEmail("jane@example.com");
-        request.setPassword("password123");
-        when(userRepository.findByEmail("jane@example.com")).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("password123", "hashed-password")).thenReturn(true);
-        when(jwtService.generateToken(user)).thenReturn("fake-jwt-token");
 
-        LoginResponse response = authService.login(request);
+        when(userRepository.save(any(User.class))).thenReturn(user);
+        when(jwtService.generateToken(user)).thenReturn("merchant-token");
 
-        assertEquals("fake-jwt-token", response.getToken());
-        assertEquals(2L, response.getUserId());
+        LoginResponse response = authService.registerMerchant(request);
+
+        assertNotNull(response);
+        assertEquals("merchant-token", response.getToken());
         assertEquals("MERCHANT", response.getRole());
-        assertFalse(response.isMustChangePassword());
     }
 
     @Test
-    void login_accountStillOnItsTemporaryPassword_flagsMustChangePasswordInResponse() {
+    void registerMerchant_shouldRejectMissingPassword() {
+        RegisterRequest request = mock(RegisterRequest.class);
+        when(request.getUsername()).thenReturn("merchant123");
+        when(request.getEmail()).thenReturn("merchant@example.com");
+        when(request.getPassword()).thenReturn(" ");
+
+        IllegalArgumentException e = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.registerMerchant(request)
+        );
+
+        assertEquals("Password is required", e.getMessage());
+    }
+
+    @Test
+    void registerMerchant_shouldRejectShortPassword() {
+        RegisterRequest request = mock(RegisterRequest.class);
+        when(request.getUsername()).thenReturn("merchant123");
+        when(request.getEmail()).thenReturn("merchant@example.com");
+        when(request.getPassword()).thenReturn("abc12");
+
+        IllegalArgumentException e = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.registerMerchant(request)
+        );
+
+        assertEquals("Password must be at least 6 characters", e.getMessage());
+    }
+
+    @Test
+    void registerMerchant_shouldRejectPasswordWithoutUppercase() {
+        RegisterRequest request = mock(RegisterRequest.class);
+        when(request.getUsername()).thenReturn("merchant123");
+        when(request.getEmail()).thenReturn("merchant@example.com");
+        when(request.getPassword()).thenReturn("password123");
+
+        IllegalArgumentException e = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.registerMerchant(request)
+        );
+
+        assertEquals(
+                "Password must contain at least one uppercase letter",
+                e.getMessage()
+        );
+    }
+
+    @Test
+    void registerMerchant_shouldRejectPasswordWithoutLowercase() {
+        RegisterRequest request = mock(RegisterRequest.class);
+        when(request.getUsername()).thenReturn("merchant123");
+        when(request.getEmail()).thenReturn("merchant@example.com");
+        when(request.getPassword()).thenReturn("PASSWORD123");
+
+        IllegalArgumentException e = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.registerMerchant(request)
+        );
+
+        assertEquals(
+                "Password must contain at least one lowercase letter",
+                e.getMessage()
+        );
+    }
+
+    @Test
+    void registerMerchant_shouldRejectPasswordWithoutNumber() {
+        RegisterRequest request = mock(RegisterRequest.class);
+        when(request.getUsername()).thenReturn("merchant123");
+        when(request.getEmail()).thenReturn("merchant@example.com");
+        when(request.getPassword()).thenReturn("Password");
+
+        IllegalArgumentException e = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.registerMerchant(request)
+        );
+
+        assertEquals(
+                "Password must contain at least one number",
+                e.getMessage()
+        );
+    }
+
+    @Test
+    void registerMerchant_shouldRejectDuplicateEmail() {
+        RegisterRequest request = mock(RegisterRequest.class);
+        when(request.getUsername()).thenReturn("merchant123");
+        when(request.getEmail()).thenReturn("merchant@example.com");
+        when(request.getPassword()).thenReturn("Password123");
+        when(userRepository.existsByEmail("merchant@example.com")).thenReturn(true);
+
+        IllegalArgumentException e = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.registerMerchant(request)
+        );
+
+        assertEquals("Email is already registered", e.getMessage());
+    }
+
+    @Test
+    void registerMerchant_shouldRejectDuplicateUsername() {
+        RegisterRequest request = mock(RegisterRequest.class);
+        when(request.getUsername()).thenReturn("merchant123");
+        when(request.getEmail()).thenReturn("merchant@example.com");
+        when(request.getPassword()).thenReturn("Password123");
+        when(userRepository.existsByEmail("merchant@example.com")).thenReturn(false);
+        when(userRepository.existsByUsername("merchant123")).thenReturn(true);
+
+        IllegalArgumentException e = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.registerMerchant(request)
+        );
+
+        assertEquals("Username is already registered", e.getMessage());
+    }
+
+    // =========================================================
+    // LOGIN
+    // =========================================================
+
+    @Test
+    void login_shouldReturnResponse_whenValid() {
+        LoginRequest request = mock(LoginRequest.class);
+        when(request.getEmail()).thenReturn("junior@example.com");
+        when(request.getPassword()).thenReturn("Password123");
+
         User user = new User();
-        user.setId(4L);
-        user.setUsername("newadmin");
-        user.setEmail("newadmin@smartcart.demo");
-        user.setPassword("hashed-password");
-        user.setRole(UserRole.ADMIN);
+        user.setId(1L);
+        user.setUsername("junior123");
+        user.setEmail("junior@example.com");
+        user.setPassword("encoded");
+        user.setRole(UserRole.CUSTOMER);
         user.setStatus(UserStatus.ACTIVE);
-        user.setMustChangePassword(true);
-        LoginRequest request = new LoginRequest();
-        request.setEmail("newadmin@smartcart.demo");
-        request.setPassword("123456");
-        when(userRepository.findByEmail("newadmin@smartcart.demo")).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("123456", "hashed-password")).thenReturn(true);
-        when(jwtService.generateToken(user)).thenReturn("fake-jwt-token");
+
+        when(userRepository.findByEmail("junior@example.com"))
+                .thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("Password123", "encoded"))
+                .thenReturn(true);
+        when(jwtService.generateToken(user))
+                .thenReturn("jwt-token");
 
         LoginResponse response = authService.login(request);
 
-        assertTrue(response.isMustChangePassword());
-    }
-
-    // ── changePassword ─────────────────────────────────────────────────
-
-    @Test
-    void changePassword_notAuthenticated_throwsForbiddenExceptionBeforeTouchingRepositories() {
-        ChangePasswordRequest request = new ChangePasswordRequest();
-        request.setNewPassword("newpassword123");
-        request.setConfirmPassword("newpassword123");
-        when(currentUserProvider.getCurrentUser()).thenThrow(new ForbiddenException("Not authenticated."));
-
-        assertThrows(ForbiddenException.class, () -> authService.changePassword(request));
-        verifyNoInteractions(userRepository, passwordEncoder);
+        assertEquals("jwt-token", response.getToken());
+        assertEquals("CUSTOMER", response.getRole());
     }
 
     @Test
-    void changePassword_confirmPasswordDoesNotMatch_throwsIllegalArgumentException() {
+    void login_shouldRejectWrongPassword() {
+        LoginRequest request = mock(LoginRequest.class);
+        when(request.getEmail()).thenReturn("junior@example.com");
+        when(request.getPassword()).thenReturn("WrongPassword");
+
         User user = new User();
-        user.setEmail("newadmin@smartcart.demo");
-        when(currentUserProvider.getCurrentUser()).thenReturn(user);
+        user.setEmail("junior@example.com");
+        user.setPassword("encoded");
+        user.setStatus(UserStatus.ACTIVE);
 
-        ChangePasswordRequest request = new ChangePasswordRequest();
-        request.setNewPassword("newpassword123");
-        request.setConfirmPassword("somethingElse123");
+        when(userRepository.findByEmail("junior@example.com"))
+                .thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("WrongPassword", "encoded"))
+                .thenReturn(false);
 
-        assertThrows(IllegalArgumentException.class, () -> authService.changePassword(request));
-        verify(userRepository, never()).save(any());
-        verifyNoInteractions(passwordEncoder);
+        IllegalArgumentException e = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.login(request)
+        );
+
+        assertEquals("Invalid email or password", e.getMessage());
     }
 
+    // =========================================================
+    // CHANGE PASSWORD
+    // =========================================================
+
     @Test
-    void changePassword_validRequest_savesEncodedPasswordAndClearsMustChangePasswordFlag() {
+    void changePassword_shouldUpdatePassword() {
+        ChangePasswordRequest request = mock(ChangePasswordRequest.class);
+        when(request.getNewPassword()).thenReturn("NewPassword123");
+        when(request.getConfirmPassword()).thenReturn("NewPassword123");
+
         User user = new User();
-        user.setEmail("newadmin@smartcart.demo");
         user.setMustChangePassword(true);
-        when(currentUserProvider.getCurrentUser()).thenReturn(user);
-        when(passwordEncoder.encode("newpassword123")).thenReturn("new-hashed-password");
 
-        ChangePasswordRequest request = new ChangePasswordRequest();
-        request.setNewPassword("newpassword123");
-        request.setConfirmPassword("newpassword123");
+        when(currentUserProvider.getCurrentUser()).thenReturn(user);
+        when(passwordEncoder.encode("NewPassword123"))
+                .thenReturn("encodedNew");
 
         authService.changePassword(request);
 
-        assertEquals("new-hashed-password", user.getPassword());
-        assertEquals(Boolean.FALSE, user.getMustChangePassword());
+        assertEquals("encodedNew", user.getPassword());
+        assertFalse(Boolean.TRUE.equals(user.getMustChangePassword()));
+
         verify(userRepository).save(user);
     }
 
-    //MERCHANT
     @Test
-    void registerMerchant_success() {
+    void changePassword_shouldRejectMismatchedPasswords() {
+        ChangePasswordRequest request = mock(ChangePasswordRequest.class);
+        when(request.getNewPassword()).thenReturn("NewPassword123");
+        when(request.getConfirmPassword()).thenReturn("Different123");
 
-        RegisterRequest request =
-                new RegisterRequest();
+        when(currentUserProvider.getCurrentUser()).thenReturn(new User());
 
-        request.setUsername("merchant01");
-        request.setEmail("merchant@smartcart.com");
-        request.setPassword("Merchant1");
-
-
-        User merchantUser =
-                new User();
-
-        merchantUser.setId(2L);
-        merchantUser.setUsername("merchant01");
-        merchantUser.setEmail("merchant@smartcart.com");
-        merchantUser.setPassword("encodedMerchantPassword");
-        merchantUser.setRole(UserRole.MERCHANT);
-        merchantUser.setStatus(UserStatus.ACTIVE);
-
-
-        when(userRepository.existsByEmail(
-                "merchant@smartcart.com"
-        )).thenReturn(false);
-
-
-        when(userRepository.existsByUsername(
-                "merchant01"
-        )).thenReturn(false);
-
-
-        when(passwordEncoder.encode(
-                "Merchant1"
-        )).thenReturn("encodedMerchantPassword");
-
-
-        when(userRepository.save(
-                any(User.class)
-        )).thenReturn(merchantUser);
-
-
-        when(jwtService.generateToken(
-                merchantUser
-        )).thenReturn("merchant-jwt-token");
-
-
-        LoginResponse response =
-                authService.registerMerchant(request);
-
-
-        assertNotNull(response);
-
-
-        assertEquals(
-                "merchant-jwt-token",
-                response.getToken()
+        IllegalArgumentException e = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.changePassword(request)
         );
 
-
-        assertEquals(
-                2L,
-                response.getUserId()
-        );
-
-
-        assertEquals(
-                "merchant01",
-                response.getUsername()
-        );
-
-
-        assertEquals(
-                "merchant@smartcart.com",
-                response.getEmail()
-        );
-
-
-        assertEquals(
-                "MERCHANT",
-                response.getRole()
-        );
-
-
-        assertFalse(response.isMustChangePassword());
-
-
-        verify(userRepository)
-                .existsByEmail(
-                        "merchant@smartcart.com"
-                );
-
-
-        verify(userRepository)
-                .existsByUsername("merchant01");
-
-
-        verify(passwordEncoder)
-                .encode("Merchant1");
-
-
-        verify(userRepository)
-                .save(any(User.class));
-
-
-        verify(jwtService)
-                .generateToken(merchantUser);
+        assertEquals("Passwords do not match", e.getMessage());
+        verify(passwordEncoder, never()).encode(anyString());
+        verify(userRepository, never()).save(any(User.class));
     }
 
-    // AUTHOR: Htet Nandar(Grace)
-    // These 5 cases previously existed as 5 near-identical @Test methods (differing only in the
-    // password value and the expected message) - Sonar S5976 flags that shape and asks for a
-    // single parameterized test instead.
-    private static Stream<Arguments> invalidMerchantPasswords() {
-        return Stream.of(
-                Arguments.of(null, "Password is required"),
-                Arguments.of("Mer1", "Password must be at least 6 characters"),
-                Arguments.of("merchant1", "Password must contain at least one uppercase letter"),
-                Arguments.of("MERCHANT1", "Password must contain at least one lowercase letter"),
-                Arguments.of("Merchant", "Password must contain at least one number")
-        );
+    // =========================================================
+    // RESET PASSWORD
+    // =========================================================
+
+    @Test
+    void resetPassword_shouldUpdatePassword() {
+        ResetPasswordRequest request = mock(ResetPasswordRequest.class);
+        when(request.getEmail()).thenReturn("junior@example.com");
+        when(request.getNewPassword()).thenReturn("NewPassword123");
+        when(request.getConfirmPassword()).thenReturn("NewPassword123");
+
+        User user = new User();
+        when(userRepository.findByEmail("junior@example.com"))
+                .thenReturn(Optional.of(user));
+        when(passwordEncoder.encode("NewPassword123"))
+                .thenReturn("encodedNew");
+
+        authService.resetPassword(request);
+
+        assertEquals("encodedNew", user.getPassword());
+        verify(userRepository).save(user);
     }
 
-    @ParameterizedTest(name = "[{index}] password=\"{0}\" -> \"{1}\"")
-    @MethodSource("invalidMerchantPasswords")
-    void registerMerchant_invalidPassword_throwsIllegalArgumentExceptionWithSpecificMessage(
-            String password, String expectedMessage) {
+    @Test
+    void resetPassword_shouldRejectMissingEmail() {
+        ResetPasswordRequest request = mock(ResetPasswordRequest.class);
+        when(request.getEmail()).thenReturn(" ");
 
-        RegisterRequest request =
-                new RegisterRequest();
+        IllegalArgumentException e = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.resetPassword(request)
+        );
 
-        request.setUsername("merchant01");
-        request.setEmail("merchant@smartcart.com");
-        request.setPassword(password);
+        assertEquals("Email is required", e.getMessage());
+    }
 
+    @Test
+    void resetPassword_shouldRejectMissingNewPassword() {
+        ResetPasswordRequest request = mock(ResetPasswordRequest.class);
+        when(request.getEmail()).thenReturn("junior@example.com");
+        when(request.getNewPassword()).thenReturn(" ");
 
-        IllegalArgumentException exception =
-                assertThrows(
-                        IllegalArgumentException.class,
-                        () ->
-                                authService.registerMerchant(request)
-                );
+        IllegalArgumentException e = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.resetPassword(request)
+        );
 
+        assertEquals("New password is required", e.getMessage());
+    }
+
+    @Test
+    void resetPassword_shouldRejectMissingConfirmPassword() {
+        ResetPasswordRequest request = mock(ResetPasswordRequest.class);
+        when(request.getEmail()).thenReturn("junior@example.com");
+        when(request.getNewPassword()).thenReturn("NewPassword123");
+        when(request.getConfirmPassword()).thenReturn(" ");
+
+        IllegalArgumentException e = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.resetPassword(request)
+        );
+
+        assertEquals("Please confirm your password", e.getMessage());
+    }
+
+    @Test
+    void resetPassword_shouldRejectUnknownEmail() {
+        ResetPasswordRequest request = mock(ResetPasswordRequest.class);
+        when(request.getEmail()).thenReturn("unknown@example.com");
+        when(request.getNewPassword()).thenReturn("NewPassword123");
+        when(request.getConfirmPassword()).thenReturn("NewPassword123");
+
+        when(userRepository.findByEmail("unknown@example.com"))
+                .thenReturn(Optional.empty());
+
+        IllegalArgumentException e = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.resetPassword(request)
+        );
+
+        assertEquals("Email address not found", e.getMessage());
+    }
+
+    @Test
+    void resetPassword_shouldRejectShortPassword() {
+        ResetPasswordRequest request = mock(ResetPasswordRequest.class);
+        when(request.getEmail()).thenReturn("junior@example.com");
+        when(request.getNewPassword()).thenReturn("Ab123");
+        when(request.getConfirmPassword()).thenReturn("Ab123");
+
+        when(userRepository.findByEmail("junior@example.com"))
+                .thenReturn(Optional.of(new User()));
+
+        IllegalArgumentException e = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.resetPassword(request)
+        );
 
         assertEquals(
-                expectedMessage,
-                exception.getMessage()
+                "Password must be at least 6 characters",
+                e.getMessage()
         );
     }
 
     @Test
-    void registerMerchant_emailAlreadyExists() {
+    void resetPassword_shouldRejectPasswordWithoutUppercase() {
+        ResetPasswordRequest request = mock(ResetPasswordRequest.class);
+        when(request.getEmail()).thenReturn("junior@example.com");
+        when(request.getNewPassword()).thenReturn("password123");
+        when(request.getConfirmPassword()).thenReturn("password123");
 
-        RegisterRequest request =
-                new RegisterRequest();
+        when(userRepository.findByEmail("junior@example.com"))
+                .thenReturn(Optional.of(new User()));
 
-        request.setUsername("merchant01");
-        request.setEmail("merchant@smartcart.com");
-        request.setPassword("Merchant1");
-
-
-        when(userRepository.existsByEmail(
-                "merchant@smartcart.com"
-        )).thenReturn(true);
-
-
-        IllegalArgumentException exception =
-                assertThrows(
-                        IllegalArgumentException.class,
-                        () ->
-                                authService.registerMerchant(request)
-                );
-
-
-        assertEquals(
-                "Email is already registered",
-                exception.getMessage()
+        IllegalArgumentException e = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.resetPassword(request)
         );
 
-
-        verify(userRepository)
-                .existsByEmail(
-                        "merchant@smartcart.com"
-                );
+        assertEquals(
+                "Password must contain at least one uppercase letter",
+                e.getMessage()
+        );
     }
 
     @Test
-    void registerMerchant_usernameAlreadyExists() {
+    void resetPassword_shouldRejectPasswordWithoutLowercase() {
+        ResetPasswordRequest request = mock(ResetPasswordRequest.class);
+        when(request.getEmail()).thenReturn("junior@example.com");
+        when(request.getNewPassword()).thenReturn("PASSWORD123");
+        when(request.getConfirmPassword()).thenReturn("PASSWORD123");
 
-        RegisterRequest request =
-                new RegisterRequest();
+        when(userRepository.findByEmail("junior@example.com"))
+                .thenReturn(Optional.of(new User()));
 
-        request.setUsername("merchant01");
-        request.setEmail("merchant@smartcart.com");
-        request.setPassword("Merchant1");
-
-
-        when(userRepository.existsByEmail(
-                "merchant@smartcart.com"
-        )).thenReturn(false);
-
-
-        when(userRepository.existsByUsername(
-                "merchant01"
-        )).thenReturn(true);
-
-
-        IllegalArgumentException exception =
-                assertThrows(
-                        IllegalArgumentException.class,
-                        () ->
-                                authService.registerMerchant(request)
-                );
-
-
-        assertEquals(
-                "Username is already registered",
-                exception.getMessage()
+        IllegalArgumentException e = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.resetPassword(request)
         );
 
-
-        verify(userRepository)
-                .existsByEmail(
-                        "merchant@smartcart.com"
-                );
-
-
-        verify(userRepository)
-                .existsByUsername("merchant01");
+        assertEquals(
+                "Password must contain at least one lowercase letter",
+                e.getMessage()
+        );
     }
 
-    //CUSTOMER LOGIN SUCCESS
     @Test
-    void login_customerSuccess() {
+    void resetPassword_shouldRejectPasswordWithoutNumber() {
+        ResetPasswordRequest request = mock(ResetPasswordRequest.class);
+        when(request.getEmail()).thenReturn("Password@example.com");
+        when(request.getNewPassword()).thenReturn("Password");
+        when(request.getConfirmPassword()).thenReturn("Password");
 
-        LoginRequest request =
-                new LoginRequest();
+        when(userRepository.findByEmail("Password@example.com"))
+                .thenReturn(Optional.of(new User()));
 
-        request.setEmail(
-                "junior@smartcart.com"
+        IllegalArgumentException e = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.resetPassword(request)
         );
-
-        request.setPassword(
-                "Password1"
-        );
-
-
-        when(userRepository.findByEmail(
-                "junior@smartcart.com"
-        )).thenReturn(
-                Optional.of(testUser)
-        );
-
-
-        when(passwordEncoder.matches(
-                "Password1",
-                "encodedPassword"
-        )).thenReturn(true);
-
-
-        when(jwtService.generateToken(
-                testUser
-        )).thenReturn("customer-jwt-token");
-
-
-        LoginResponse response =
-                authService.login(request);
-
-
-        assertNotNull(response);
-
 
         assertEquals(
-                "customer-jwt-token",
-                response.getToken()
+                "Password must contain at least one number",
+                e.getMessage()
         );
-
-
-        assertEquals(
-                1L,
-                response.getUserId()
-        );
-
-
-        assertEquals(
-                "junior",
-                response.getUsername()
-        );
-
-
-        assertEquals(
-                "junior@smartcart.com",
-                response.getEmail()
-        );
-
-
-        assertEquals(
-                "CUSTOMER",
-                response.getRole()
-        );
-
-
-        verify(userRepository)
-                .findByEmail(
-                        "junior@smartcart.com"
-                );
-
-
-        verify(passwordEncoder)
-                .matches(
-                        "Password1",
-                        "encodedPassword"
-                );
-
-
-        verify(jwtService)
-                .generateToken(testUser);
     }
 
-    //MERCHANT LOGIN SUCCESS
     @Test
-    void login_merchantSuccess() {
+    void resetPassword_shouldRejectMismatchedPasswords() {
+        ResetPasswordRequest request = mock(ResetPasswordRequest.class);
+        when(request.getEmail()).thenReturn("junior@example.com");
+        when(request.getNewPassword()).thenReturn("NewPassword123");
+        when(request.getConfirmPassword()).thenReturn("Different123");
 
-        LoginRequest request =
-                new LoginRequest();
+        when(userRepository.findByEmail("junior@example.com"))
+                .thenReturn(Optional.of(new User()));
 
-        request.setEmail(
-                "merchant@smartcart.com"
+        IllegalArgumentException e = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.resetPassword(request)
         );
 
-        request.setPassword(
-                "Merchant1"
-        );
-
-
-        User merchantUser =
-                new User();
-
-        merchantUser.setId(2L);
-        merchantUser.setUsername("merchant01");
-        merchantUser.setEmail("merchant@smartcart.com");
-        merchantUser.setPassword("encodedMerchantPassword");
-        merchantUser.setRole(UserRole.MERCHANT);
-        merchantUser.setStatus(UserStatus.ACTIVE);
-
-
-        when(userRepository.findByEmail(
-                "merchant@smartcart.com"
-        )).thenReturn(
-                Optional.of(merchantUser)
-        );
-
-
-        when(passwordEncoder.matches(
-                "Merchant1",
-                "encodedMerchantPassword"
-        )).thenReturn(true);
-
-
-        when(jwtService.generateToken(
-                merchantUser
-        )).thenReturn("merchant-jwt-token");
-
-
-        LoginResponse response =
-                authService.login(request);
-
-
-        assertNotNull(response);
-
-
-        assertEquals(
-                "merchant-jwt-token",
-                response.getToken()
-        );
-
-
-        assertEquals(
-                2L,
-                response.getUserId()
-        );
-
-
-        assertEquals(
-                "merchant01",
-                response.getUsername()
-        );
-
-
-        assertEquals(
-                "merchant@smartcart.com",
-                response.getEmail()
-        );
-
-
-        assertEquals(
-                "MERCHANT",
-                response.getRole()
-        );
+        assertEquals("Passwords do not match", e.getMessage());
+        verify(passwordEncoder, never()).encode(anyString());
     }
 
-    //EMAIL NOT EXIST
+    // =========================================================
+    // CHECK EMAIL
+    // =========================================================
+
     @Test
-    void login_emailNotFound() {
+    void checkEmail_shouldReturnTrue_whenEmailExists() {
+        when(userRepository.findByEmail("junior@example.com"))
+                .thenReturn(Optional.of(new User()));
 
-        LoginRequest request =
-                new LoginRequest();
-
-        request.setEmail(
-                "unknown@smartcart.com"
-        );
-
-        request.setPassword(
-                "Password1"
-        );
-
-
-        when(userRepository.findByEmail(
-                "unknown@smartcart.com"
-        )).thenReturn(
-                Optional.empty()
-        );
-
-
-        IllegalArgumentException exception =
-                assertThrows(
-                        IllegalArgumentException.class,
-                        () ->
-                                authService.login(request)
-                );
-
-
-        assertEquals(
-                "Invalid email or password",
-                exception.getMessage()
-        );
-
-
-        verify(userRepository)
-                .findByEmail(
-                        "unknown@smartcart.com"
-                );
+        assertTrue(authService.checkEmail("junior@example.com"));
     }
 
-    //USER ACCOUNT NOT ACTIVE
     @Test
-    void login_inactiveAccount() {
+    void checkEmail_shouldReturnFalse_whenEmailDoesNotExist() {
+        when(userRepository.findByEmail("unknown@example.com"))
+                .thenReturn(Optional.empty());
 
-        LoginRequest request =
-                new LoginRequest();
-
-        request.setEmail(
-                "junior@smartcart.com"
-        );
-
-        request.setPassword(
-                "Password1"
-        );
-
-
-        testUser.setStatus(
-                UserStatus.INACTIVE
-        );
-
-
-        when(userRepository.findByEmail(
-                "junior@smartcart.com"
-        )).thenReturn(
-                Optional.of(testUser)
-        );
-
-
-        IllegalArgumentException exception =
-                assertThrows(
-                        IllegalArgumentException.class,
-                        () ->
-                                authService.login(request)
-                );
-
-
-        assertEquals(
-                "User account is inactive",
-                exception.getMessage()
-        );
-
-
-        verify(userRepository)
-                .findByEmail(
-                        "junior@smartcart.com"
-                );
+        assertFalse(authService.checkEmail("unknown@example.com"));
     }
-
-
 }

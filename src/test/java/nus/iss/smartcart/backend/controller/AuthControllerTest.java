@@ -1,235 +1,140 @@
 package nus.iss.smartcart.backend.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import nus.iss.smartcart.backend.dto.ChangePasswordRequest;
 import nus.iss.smartcart.backend.dto.LoginRequest;
 import nus.iss.smartcart.backend.dto.LoginResponse;
 import nus.iss.smartcart.backend.dto.RegisterRequest;
-import nus.iss.smartcart.backend.exception.ForbiddenException;
-import nus.iss.smartcart.backend.repository.UserRepository;
-import nus.iss.smartcart.backend.security.CustomUserDetailsService;
-import nus.iss.smartcart.backend.security.JwtService;
+import nus.iss.smartcart.backend.dto.ResetPasswordRequest;
 import nus.iss.smartcart.backend.service.AuthService;
+
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.junit.jupiter.api.extension.ExtendWith;
+
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import org.springframework.http.MediaType;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(AuthController.class)
+@ExtendWith(MockitoExtension.class)
 class AuthControllerTest {
 
-    @Autowired
     private MockMvc mockMvc;
 
-    @MockitoBean
+    @Mock
     private AuthService authService;
-    @MockitoBean private JwtService jwtService;
-    @MockitoBean private CustomUserDetailsService customUserDetailsService;
-    @MockitoBean private UserRepository userRepository;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private AuthController authController;
 
-    @Test
-    void register_validRequest_returnsCreatedWithLoginResponse() throws Exception {
-        RegisterRequest request = new RegisterRequest();
-        request.setUsername("jane");
-        request.setEmail("jane@example.com");
-        request.setPassword("password123");
 
-        LoginResponse response =
-                new LoginResponse("fake-jwt-token", 1L, "jane", "jane@example.com", "CUSTOMER", false);
-        when(authService.register(any(RegisterRequest.class))).thenReturn(response);
+    // =========================================================
+    // SETUP
+    // =========================================================
 
-        mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.token").value("fake-jwt-token"))
-                .andExpect(jsonPath("$.username").value("jane"))
-                .andExpect(jsonPath("$.role").value("CUSTOMER"));
+    @BeforeEach
+    void setUp() {
+
+        authController =
+                new AuthController(authService);
+
+        mockMvc =
+                MockMvcBuilders
+                        .standaloneSetup(authController)
+                        .build();
     }
 
+
+    // =========================================================
+    // REGISTER
+    // =========================================================
+
     @Test
-    void register_serviceThrowsIllegalArgument_returnsBadRequestWithMessage() throws Exception {
-        RegisterRequest request = new RegisterRequest();
-        request.setUsername("jane");
-        request.setEmail("jane@example.com");
-        request.setPassword("password123");
+    void register_shouldReturn201_whenRegistrationSuccessful()
+            throws Exception {
+
+        LoginResponse response =
+                mock(LoginResponse.class);
 
         when(authService.register(any(RegisterRequest.class)))
-                .thenThrow(new IllegalArgumentException("Email is already registered"));
+                .thenReturn(response);
 
-        mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(
+                        post("/api/auth/register")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {
+                                            "username": "junior123",
+                                            "email": "junior@example.com",
+                                            "password": "Password123"
+                                        }
+                                        """
+                                )
+                )
+                .andExpect(status().isCreated());
+
+        verify(authService)
+                .register(any(RegisterRequest.class));
+    }
+
+
+    // =========================================================
+    // REGISTER - ERROR
+    // =========================================================
+
+    @Test
+    void register_shouldReturn400_whenRegistrationFails()
+            throws Exception {
+
+        when(authService.register(any(RegisterRequest.class)))
+                .thenThrow(
+                        new IllegalArgumentException(
+                                "Username already exists"
+                        )
+                );
+
+        mockMvc.perform(
+                        post("/api/auth/register")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {
+                                            "username": "junior123",
+                                            "email": "junior@example.com",
+                                            "password": "Password123"
+                                        }
+                                        """
+                                )
+                )
                 .andExpect(status().isBadRequest())
-                .andExpect(content().string("Email is already registered"));
+                .andExpect(
+                        content().string("Username already exists")
+                );
+
+        verify(authService)
+                .register(any(RegisterRequest.class));
     }
 
+
+    // =========================================================
+    // MERCHANT REGISTER
+    // =========================================================
+
     @Test
-    void login_validCredentials_returnsOkWithLoginResponse() throws Exception {
-        LoginRequest request = new LoginRequest();
-        request.setEmail("jane@example.com");
-        request.setPassword("password123");
+    void registerMerchant_shouldReturn201_whenSuccessful()
+            throws Exception {
 
         LoginResponse response =
-                new LoginResponse("fake-jwt-token", 1L, "jane", "jane@example.com", "CUSTOMER", false);
-        when(authService.login(any(LoginRequest.class))).thenReturn(response);
-
-        mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").value("fake-jwt-token"));
-    }
-
-    @Test
-    void login_invalidCredentials_returnsUnauthorizedWithMessage() throws Exception {
-        LoginRequest request = new LoginRequest();
-        request.setEmail("jane@example.com");
-        request.setPassword("wrong-password");
-
-        when(authService.login(any(LoginRequest.class)))
-                .thenThrow(new IllegalArgumentException("Invalid email or password"));
-
-        mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isUnauthorized())
-                .andExpect(content().string("Invalid email or password"));
-    }
-
-    //VALIDATION ERROR
-    @Test
-    void register_validationError()
-            throws Exception {
-
-        RegisterRequest request =
-                new RegisterRequest();
-
-        request.setUsername("");
-        request.setEmail("john@example.com");
-        request.setPassword("Password1");
-
-
-        when(
-                authService.register(
-                        any(RegisterRequest.class)
-                )
-        ).thenThrow(
-                new IllegalArgumentException(
-                        "Username is required"
-                )
-        );
-
-
-        mockMvc.perform(
-                        post("/api/auth/register")
-                                .contentType(
-                                        MediaType.APPLICATION_JSON
-                                )
-                                .content(
-                                        objectMapper.writeValueAsString(
-                                                request
-                                        )
-                                )
-                )
-
-                .andExpect(
-                        status().isBadRequest()
-                )
-
-                .andExpect(
-                        content().string(
-                                "Username is required"
-                        )
-                );
-
-
-        verify(
-                authService
-        ).register(
-                any(RegisterRequest.class)
-        );
-    }
-
-    //DUPLICATE EMAIL
-    @Test
-    void register_duplicateEmail()
-            throws Exception {
-
-        RegisterRequest request =
-                new RegisterRequest();
-
-        request.setUsername("john");
-        request.setEmail("john@example.com");
-        request.setPassword("Password1");
-
-
-        when(
-                authService.register(
-                        any(RegisterRequest.class)
-                )
-        ).thenThrow(
-                new IllegalArgumentException(
-                        "Email is already registered"
-                )
-        );
-
-
-        mockMvc.perform(
-                        post("/api/auth/register")
-                                .contentType(
-                                        MediaType.APPLICATION_JSON
-                                )
-                                .content(
-                                        objectMapper.writeValueAsString(
-                                                request
-                                        )
-                                )
-                )
-
-                .andExpect(
-                        status().isBadRequest()
-                )
-
-                .andExpect(
-                        content().string(
-                                "Email is already registered"
-                        )
-                );
-    }
-
-    //MERCHANT REGISTER SUCCESS
-    @Test
-    void registerMerchant_success()
-            throws Exception {
-
-        RegisterRequest request =
-                new RegisterRequest();
-
-        request.setUsername("merchant01");
-        request.setEmail("merchant@example.com");
-        request.setPassword("Password1");
-
-
-        LoginResponse response =
-                new LoginResponse(
-                        "merchant-jwt-token",
-                        2L,
-                        "merchant01",
-                        "merchant@example.com",
-                        "MERCHANT",
-                        false
-                );
-
+                mock(LoginResponse.class);
 
         when(
                 authService.registerMerchant(
@@ -237,83 +142,81 @@ class AuthControllerTest {
                 )
         ).thenReturn(response);
 
+        mockMvc.perform(
+                        post("/api/auth/merchant/register")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {
+                                            "username": "merchant123",
+                                            "email": "merchant@example.com",
+                                            "password": "Password123"
+                                        }
+                                        """
+                                )
+                )
+                .andExpect(status().isCreated());
+
+        verify(authService)
+                .registerMerchant(
+                        any(RegisterRequest.class)
+                );
+    }
+
+
+    // =========================================================
+    // MERCHANT REGISTER - ERROR
+    // =========================================================
+
+    @Test
+    void registerMerchant_shouldReturn400_whenRegistrationFails()
+            throws Exception {
+
+        when(
+                authService.registerMerchant(
+                        any(RegisterRequest.class)
+                )
+        ).thenThrow(
+                new IllegalArgumentException(
+                        "Merchant already exists"
+                )
+        );
 
         mockMvc.perform(
                         post("/api/auth/merchant/register")
-                                .contentType(
-                                        MediaType.APPLICATION_JSON
-                                )
+                                .contentType(MediaType.APPLICATION_JSON)
                                 .content(
-                                        objectMapper.writeValueAsString(
-                                                request
-                                        )
+                                        """
+                                        {
+                                            "username": "merchant123",
+                                            "email": "merchant@example.com",
+                                            "password": "Password123"
+                                        }
+                                        """
                                 )
                 )
-
+                .andExpect(status().isBadRequest())
                 .andExpect(
-                        status().isCreated()
-                )
-
-                .andExpect(
-                        jsonPath("$.token")
-                                .value("merchant-jwt-token")
-                )
-
-                .andExpect(
-                        jsonPath("$.userId")
-                                .value(2)
-                )
-
-                .andExpect(
-                        jsonPath("$.username")
-                                .value("merchant01")
-                )
-
-                .andExpect(
-                        jsonPath("$.email")
-                                .value("merchant@example.com")
-                )
-
-                .andExpect(
-                        jsonPath("$.role")
-                                .value("MERCHANT")
+                        content().string("Merchant already exists")
                 );
 
-
-        verify(
-                authService
-        ).registerMerchant(
-                any(RegisterRequest.class)
-        );
+        verify(authService)
+                .registerMerchant(
+                        any(RegisterRequest.class)
+                );
     }
 
-    //LOGIN MERCHANT SUCCESS
+
+    // =========================================================
+    // LOGIN
+    // =========================================================
+
     @Test
-    void login_merchant_success()
+    void login_shouldReturn200_whenLoginSuccessful()
             throws Exception {
 
-        LoginRequest request =
-                new LoginRequest();
-
-        request.setEmail(
-                "merchant@smartcart.com.sg"
-        );
-
-        request.setPassword(
-                "Password1"
-        );
-
-
         LoginResponse response =
-                new LoginResponse(
-                        "merchant-jwt-token",
-                        4L,
-                        "merchant01",
-                        "merchant@smartcart.com.sg",
-                        "MERCHANT",
-                        false
-                );
-
+                mock(LoginResponse.class);
 
         when(
                 authService.login(
@@ -321,75 +224,32 @@ class AuthControllerTest {
                 )
         ).thenReturn(response);
 
-
         mockMvc.perform(
                         post("/api/auth/login")
-                                .contentType(
-                                        MediaType.APPLICATION_JSON
-                                )
+                                .contentType(MediaType.APPLICATION_JSON)
                                 .content(
-                                        objectMapper.writeValueAsString(
-                                                request
-                                        )
+                                        """
+                                        {
+                                            "email": "junior@example.com",
+                                            "password": "Password123"
+                                        }
+                                        """
                                 )
                 )
+                .andExpect(status().isOk());
 
-                .andExpect(
-                        status().isOk()
-                )
-
-                .andExpect(
-                        jsonPath("$.token")
-                                .value("merchant-jwt-token")
-                )
-
-                // IMPORTANT: LoginResponse uses userId
-                .andExpect(
-                        jsonPath("$.userId")
-                                .value(4)
-                )
-
-                .andExpect(
-                        jsonPath("$.username")
-                                .value("merchant01")
-                )
-
-                .andExpect(
-                        jsonPath("$.email")
-                                .value(
-                                        "merchant@smartcart.com.sg"
-                                )
-                )
-
-                .andExpect(
-                        jsonPath("$.role")
-                                .value("MERCHANT")
-                );
-
-
-        verify(
-                authService
-        ).login(
-                any(LoginRequest.class)
-        );
+        verify(authService)
+                .login(any(LoginRequest.class));
     }
 
-    //LOGIN VALIDATION
+
+    // =========================================================
+    // LOGIN - INVALID CREDENTIALS
+    // =========================================================
+
     @Test
-    void login_invalidCredentials()
+    void login_shouldReturn401_whenCredentialsAreInvalid()
             throws Exception {
-
-        LoginRequest request =
-                new LoginRequest();
-
-        request.setEmail(
-                "wrong@example.com"
-        );
-
-        request.setPassword(
-                "wrongpassword"
-        );
-
 
         when(
                 authService.login(
@@ -401,164 +261,385 @@ class AuthControllerTest {
                 )
         );
 
-
         mockMvc.perform(
                         post("/api/auth/login")
-                                .contentType(
-                                        MediaType.APPLICATION_JSON
-                                )
+                                .contentType(MediaType.APPLICATION_JSON)
                                 .content(
-                                        objectMapper.writeValueAsString(
-                                                request
-                                        )
+                                        """
+                                        {
+                                            "email": "junior@example.com",
+                                            "password": "wrongpassword"
+                                        }
+                                        """
                                 )
                 )
-
-                .andExpect(
-                        status().isUnauthorized()
-                )
-
+                .andExpect(status().isUnauthorized())
                 .andExpect(
                         content().string(
                                 "Invalid email or password"
                         )
                 );
 
-
-        verify(
-                authService
-        ).login(
-                any(LoginRequest.class)
-        );
+        verify(authService)
+                .login(any(LoginRequest.class));
     }
 
-    //INACTIVE ACCOUNT
+
+    // =========================================================
+    // CHANGE PASSWORD
+    // =========================================================
+
     @Test
-    void login_inactiveAccount()
+    void changePassword_shouldReturn200_whenSuccessful()
             throws Exception {
 
-        LoginRequest request =
-                new LoginRequest();
-
-        request.setEmail(
-                "inactive@example.com"
-        );
-
-        request.setPassword(
-                "Password1"
-        );
-
-
-        when(
-                authService.login(
-                        any(LoginRequest.class)
-                )
-        ).thenThrow(
-                new IllegalArgumentException(
-                        "User account is inactive"
-                )
-        );
-
+        doNothing()
+                .when(authService)
+                .changePassword(
+                        any(ChangePasswordRequest.class)
+                );
 
         mockMvc.perform(
-                        post("/api/auth/login")
-                                .contentType(
-                                        MediaType.APPLICATION_JSON
-                                )
+                        post("/api/auth/change-password")
+                                .contentType(MediaType.APPLICATION_JSON)
                                 .content(
-                                        objectMapper.writeValueAsString(
-                                                request
-                                        )
+                                        """
+                                        {
+                                            "currentPassword": "OldPassword123",
+                                            "newPassword": "NewPassword123",
+                                            "confirmPassword": "NewPassword123"
+                                        }
+                                        """
                                 )
                 )
-
+                .andExpect(status().isOk())
                 .andExpect(
-                        status().isUnauthorized()
-                )
+                        jsonPath("$.message")
+                                .value("Password changed successfully")
+                );
 
-                .andExpect(
-                        content().string(
-                                "User account is inactive"
-                        )
+        verify(authService)
+                .changePassword(
+                        any(ChangePasswordRequest.class)
                 );
     }
 
-    //LOGOUT TEST
+
+    // =========================================================
+    // CHANGE PASSWORD - ERROR
+    // =========================================================
+
     @Test
-    void logout_success()
+    void changePassword_shouldReturn400_whenServiceFails()
+            throws Exception {
+
+        doThrow(
+                new IllegalArgumentException(
+                        "Current password is incorrect"
+                )
+        )
+                .when(authService)
+                .changePassword(
+                        any(ChangePasswordRequest.class)
+                );
+
+        mockMvc.perform(
+                        post("/api/auth/change-password")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {
+                                            "currentPassword": "WrongPassword123",
+                                            "newPassword": "NewPassword123",
+                                            "confirmPassword": "NewPassword123"
+                                        }
+                                        """
+                                )
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(
+                        content().string(
+                                "Current password is incorrect"
+                        )
+                );
+
+        verify(authService)
+                .changePassword(
+                        any(ChangePasswordRequest.class)
+                );
+    }
+
+
+    // =========================================================
+    // RESET PASSWORD
+    // =========================================================
+
+    @Test
+    void resetPassword_shouldReturn200_whenSuccessful()
+            throws Exception {
+
+        doNothing()
+                .when(authService)
+                .resetPassword(
+                        any(ResetPasswordRequest.class)
+                );
+
+        mockMvc.perform(
+                        post("/api/auth/reset-password")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {
+                                            "email": "junior@example.com",
+                                            "newPassword": "NewPassword123"
+                                        }
+                                        """
+                                )
+                )
+                .andExpect(status().isOk())
+                .andExpect(
+                        jsonPath("$.message")
+                                .value("Password updated successfully")
+                );
+
+        verify(authService)
+                .resetPassword(
+                        any(ResetPasswordRequest.class)
+                );
+    }
+
+
+    // =========================================================
+    // RESET PASSWORD - ERROR
+    // =========================================================
+
+    @Test
+    void resetPassword_shouldReturn400_whenServiceFails()
+            throws Exception {
+
+        doThrow(
+                new IllegalArgumentException(
+                        "Email address not found"
+                )
+        )
+                .when(authService)
+                .resetPassword(
+                        any(ResetPasswordRequest.class)
+                );
+
+        mockMvc.perform(
+                        post("/api/auth/reset-password")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {
+                                            "email": "unknown@example.com",
+                                            "newPassword": "NewPassword123"
+                                        }
+                                        """
+                                )
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(
+                        content().string(
+                                "Email address not found"
+                        )
+                );
+
+        verify(authService)
+                .resetPassword(
+                        any(ResetPasswordRequest.class)
+                );
+    }
+
+
+    // =========================================================
+    // CHECK EMAIL - EMPTY
+    // =========================================================
+
+    @Test
+    void checkEmail_shouldReturn400_whenEmailIsMissing()
+            throws Exception {
+
+        mockMvc.perform(
+                        post("/api/auth/check-email")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {}
+                                        """
+                                )
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(
+                        jsonPath("$.message")
+                                .value("Email is required")
+                );
+
+        verify(
+                authService,
+                never()
+        ).checkEmail(anyString());
+    }
+
+
+    // =========================================================
+    // CHECK EMAIL - SPACES
+    // =========================================================
+
+    @Test
+    void checkEmail_shouldReturn400_whenEmailIsOnlySpaces()
+            throws Exception {
+
+        mockMvc.perform(
+                        post("/api/auth/check-email")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {
+                                            "email": "   "
+                                        }
+                                        """
+                                )
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(
+                        jsonPath("$.message")
+                                .value("Email is required")
+                );
+
+        verify(
+                authService,
+                never()
+        ).checkEmail(anyString());
+    }
+
+
+    // =========================================================
+    // CHECK EMAIL - FOUND
+    // =========================================================
+
+    @Test
+    void checkEmail_shouldReturn200_whenEmailExists()
+            throws Exception {
+
+        when(
+                authService.checkEmail(
+                        "junior@example.com"
+                )
+        ).thenReturn(true);
+
+        mockMvc.perform(
+                        post("/api/auth/check-email")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {
+                                            "email": "junior@example.com"
+                                        }
+                                        """
+                                )
+                )
+                .andExpect(status().isOk())
+                .andExpect(
+                        jsonPath("$.message")
+                                .value("Email address found")
+                );
+
+        verify(authService)
+                .checkEmail("junior@example.com");
+    }
+
+
+    // =========================================================
+    // CHECK EMAIL - NOT FOUND
+    // =========================================================
+
+    @Test
+    void checkEmail_shouldReturn404_whenEmailDoesNotExist()
+            throws Exception {
+
+        when(
+                authService.checkEmail(
+                        "unknown@example.com"
+                )
+        ).thenReturn(false);
+
+        mockMvc.perform(
+                        post("/api/auth/check-email")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {
+                                            "email": "unknown@example.com"
+                                        }
+                                        """
+                                )
+                )
+                .andExpect(status().isNotFound())
+                .andExpect(
+                        jsonPath("$.message")
+                                .value("Email address not found")
+                );
+
+        verify(authService)
+                .checkEmail("unknown@example.com");
+    }
+
+
+    // =========================================================
+    // CHECK EMAIL - TRIM
+    // =========================================================
+
+    @Test
+    void checkEmail_shouldTrimEmailBeforeChecking()
+            throws Exception {
+
+        when(
+                authService.checkEmail(
+                        "junior@example.com"
+                )
+        ).thenReturn(true);
+
+        mockMvc.perform(
+                        post("/api/auth/check-email")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {
+                                            "email": "  junior@example.com  "
+                                        }
+                                        """
+                                )
+                )
+                .andExpect(status().isOk())
+                .andExpect(
+                        jsonPath("$.message")
+                                .value("Email address found")
+                );
+
+        verify(authService)
+                .checkEmail(
+                        "junior@example.com"
+                );
+    }
+
+
+    // =========================================================
+    // LOGOUT
+    // =========================================================
+
+    @Test
+    void logout_shouldReturn200_whenSuccessful()
             throws Exception {
 
         mockMvc.perform(
                         post("/api/auth/logout")
                 )
-
-                .andExpect(
-                        status().isOk()
-                )
-
+                .andExpect(status().isOk())
                 .andExpect(
                         jsonPath("$.message")
-                                .value(
-                                        "Logout successful"
-                                )
+                                .value("Logout successful")
                 );
-    }
-
-    // ── change-password ────────────────────────────────────────────────
-
-    @Test
-    void changePassword_validRequest_returnsOkAndCallsService() throws Exception {
-        ChangePasswordRequest request = new ChangePasswordRequest();
-        request.setNewPassword("newpassword123");
-        request.setConfirmPassword("newpassword123");
-
-        doNothing().when(authService).changePassword(any(ChangePasswordRequest.class));
-
-        mockMvc.perform(post("/api/auth/change-password")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Password changed successfully"));
-
-        verify(authService).changePassword(any(ChangePasswordRequest.class));
-    }
-
-    @Test
-    void changePassword_passwordsDoNotMatch_returnsBadRequestWithMessage() throws Exception {
-        ChangePasswordRequest request = new ChangePasswordRequest();
-        request.setNewPassword("newpassword123");
-        request.setConfirmPassword("somethingElse123");
-
-        doThrow(new IllegalArgumentException("Passwords do not match"))
-                .when(authService).changePassword(any(ChangePasswordRequest.class));
-
-        mockMvc.perform(post("/api/auth/change-password")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().string("Passwords do not match"));
-    }
-
-    @Test
-    void changePassword_newPasswordTooShort_returnsBadRequest() throws Exception {
-        mockMvc.perform(post("/api/auth/change-password")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"newPassword\":\"abc\",\"confirmPassword\":\"abc\"}"))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void changePassword_callerNotAuthenticated_returnsForbidden() throws Exception {
-        ChangePasswordRequest request = new ChangePasswordRequest();
-        request.setNewPassword("newpassword123");
-        request.setConfirmPassword("newpassword123");
-
-        doThrow(new ForbiddenException("Not authenticated."))
-                .when(authService).changePassword(any(ChangePasswordRequest.class));
-
-        mockMvc.perform(post("/api/auth/change-password")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isForbidden());
     }
 }

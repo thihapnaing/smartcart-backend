@@ -239,13 +239,6 @@ public class UserProfileService {
                     avatar.getBytes()
             );
 
-
-            System.out.println(
-                    "Avatar saved: " +
-                            target.toAbsolutePath()
-            );
-
-
             return "upload/" + filename;
 
         } catch (IOException e) {

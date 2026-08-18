@@ -116,7 +116,7 @@ public class AuthController {
 
     //Junior
     @PostMapping("/reset-password")
-    public ResponseEntity<?> resetPassword(
+    public ResponseEntity<Object> resetPassword(
             @RequestBody ResetPasswordRequest request
     ) {
 
@@ -157,7 +157,7 @@ public class AuthController {
         if (!exists) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of(
-                            "message", "Email address not found"
+                            MESSAGE, "Email address not found"
                     ));
         }
 

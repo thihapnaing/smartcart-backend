@@ -117,6 +117,4 @@ docker run -p 8080:8080 --env SPRING_DATASOURCE_PASSWORD=*** smartcart-backend
 - `terraform/` — Terraform for the AWS EKS/ECR/VPC infrastructure (see `terraform/README.md`)
 - `.github/workflows/backend.yml` — CI pipeline (build, test, SonarCloud, image scan/build)
 
-## License
 
-No license specified.

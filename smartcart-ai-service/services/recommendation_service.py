@@ -113,7 +113,7 @@ class RecommendationService:
         # Step 1: Priority fetch for preferred categories
         if profile.preferred_categories:
             category_query = " ".join(profile.preferred_categories)
-            pref_candidates = self.product_search.invoke({"query": category_query, "limit": 5})
+            pref_candidates = self.product_search.invoke({"query": category_query, "limit": 1})
             for c in pref_candidates:
                 if c["product_id"] not in existing_ids:
                     candidates.append(c)
@@ -121,7 +121,7 @@ class RecommendationService:
 
         # Step 2: Fill remaining candidate pool with general signals
         general_query = self._query(profile)
-        general_candidates = self.product_search.invoke({"query": general_query, "limit": 15})
+        general_candidates = self.product_search.invoke({"query": general_query, "limit": 18})
         
         for c in general_candidates:
             if c["product_id"] not in existing_ids:

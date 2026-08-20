@@ -47,7 +47,7 @@ async def lifespan(_app: FastAPI):
     # --- Sync ChromaDB with Spring Boot MySQL on startup ---
     try:
         print("[Startup] Syncing product catalog with ChromaDB...")
-        #catalog = ProductCatalog()
+        catalog = ProductCatalog()
         catalog.reindex()
     except Exception as e:
         print(f"[Startup Warning] Could not sync ChromaDB: {e}")

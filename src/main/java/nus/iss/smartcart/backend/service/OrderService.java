@@ -232,311 +232,6 @@ public class OrderService {
     }
 
     // for delivery app
-    public List<Order> getAssignedOrders(Long deliveryPersonId) {
-        return orderRepository.findByDeliveryPersonId(deliveryPersonId);
-    }
-
-    @Transactional(readOnly = true)
-    public List<DeliveryOrderDto> getInProgressOrders(
-            Long deliveryPersonId
-    ) {
-        return orderRepository
-                .findByDeliveryPersonIdAndStatusIn(
-                        deliveryPersonId,
-                        List.of(
-                                OrderStatus.PACKED,
-                                OrderStatus.PICKED_UP
-                        )
-                )
-                .stream()
-                .map(this::toDeliveryOrderDto)
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public List<DeliveryOrderDto> getCompletedOrders(
-            Long deliveryPersonId
-    ) {
-        return orderRepository
-                .findByDeliveryPersonIdAndStatus(
-                        deliveryPersonId,
-                        OrderStatus.DELIVERED
-                )
-                .stream()
-                .map(this::toDeliveryOrderDto)
-                .toList();
-    }
-
-    @Transactional
-    public Order pickupParcel(
-            String trackingNo,
-            Long deliveryPersonId
-    ) {
-        Order order = orderRepository
-                .findByTrackingNoAndDeliveryPersonId(
-                        trackingNo,
-                        deliveryPersonId
-                )
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "Order not found or not assigned " +
-                                        "to this delivery person"
-                        )
-                );
-
-        if (order.getStatus() != OrderStatus.PACKED) {
-            throw new IllegalStateException(
-                    "Only PACKED orders can be picked up"
-            );
-        }
-
-        order.setStatus(OrderStatus.PICKED_UP);
-
-        return orderRepository.save(order);
-    }
-
-    @Transactional
-    public Order deliveredParcel(
-            String trackingNo,
-            Long deliveryPersonId
-    ) {
-        Order order = orderRepository
-                .findByTrackingNoAndDeliveryPersonId(
-                        trackingNo,
-                        deliveryPersonId
-                )
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "Order not found or not assigned " +
-                                        "to this delivery person"
-                        )
-                );
-
-        if (order.getStatus() != OrderStatus.PICKED_UP) {
-            throw new IllegalStateException(
-                    "Only PACKED orders can be picked up"
-            );
-        }
-
-        order.setStatus(OrderStatus.DELIVERED);
-
-        return orderRepository.save(order);
-    }
-
-    public Order searchAssignedOrderByTrackingNo(
-            String trackingNo,
-            Long deliveryPersonId
-    ) {
-        return orderRepository
-                .findByTrackingNoAndDeliveryPersonId(
-                        trackingNo,
-                        deliveryPersonId
-                )
-                .orElseThrow(() ->
-                        new ResponseStatusException(
-                                HttpStatus.NOT_FOUND,
-                                "Order not found or not assigned"
-                        )
-                );
-    }
-//    public Order searchAssignedOrderByTrackingNo(
-//            String trackingNo,
-//            Long deliveryPersonId
-//    ) {
-//        return orderRepository
-//                .findByTrackingNoAndDeliveryPersonId(
-//                        trackingNo,
-//                        deliveryPersonId
-//                )
-//                .orElseThrow(() ->
-//                        new ResponseStatusException(
-//                                HttpStatus.NOT_FOUND,
-//                                "Order not found or not assigned?: " + trackingNo
-//                        )
-//                );
-//    }
-
-//    @Transactional
-//    public Order confirmDeliveryProof(
-//            String trackingNo,
-//            String fileKey
-//    ) {
-//        Order order = orderRepository
-//                .findByTrackingNo(trackingNo)
-//                .orElseThrow(() ->
-//                        new ResponseStatusException(
-//                                HttpStatus.NOT_FOUND,
-//                                "Order not found"
-//                        )
-//                );
-//
-//        order.setDeliveryProofKey(fileKey);
-//        order.setStatus(OrderStatus.DELIVERED);
-//        order.setDeliveredAt(LocalDateTime.now());
-//
-//        return orderRepository.save(order);
-//    }
-
-    @Transactional
-    public void confirmDeliveryProof(
-            String trackingNo,
-            String fileKey
-    ) {
-        Order order = orderRepository
-                .findByTrackingNo(trackingNo)
-                .orElseThrow(() ->
-                        new ResponseStatusException(
-                                HttpStatus.NOT_FOUND,
-                                "Order not found"
-                        )
-                );
-
-        if (fileKey == null ||
-                fileKey.isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Delivery proof file key is required"
-            );
-        }
-
-        order.setDeliveryProofKey(
-                fileKey
-        );
-
-        order.setStatus(
-                OrderStatus.DELIVERED
-        );
-
-        order.setDeliveredAt(
-                LocalDateTime.now()
-        );
-
-        orderRepository.save(order);
-    }
-
-    @Transactional
-    public Order assignOrder(
-            String trackingNo,
-            Long deliveryPersonId
-    ) {
-        Order order = orderRepository
-                .findByTrackingNo(trackingNo)
-                .orElseThrow(() ->
-                        new ResponseStatusException(
-                                HttpStatus.NOT_FOUND,
-                                "Order not found"
-                        )
-                );
-
-        order.setDeliveryPersonId(deliveryPersonId);
-
-        return orderRepository.save(order);
-    }
-
-    @Transactional
-    public DeliveryOrderDto updateDeliveryDetails(
-            Long orderId,
-            UpdateDeliveryRequest request
-    ) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() ->
-                        new ResponseStatusException(
-                                HttpStatus.NOT_FOUND,
-                                "Order not found"
-                        )
-                );
-
-        OrderStatus newStatus =
-                request.getStatus() != null
-                        ? request.getStatus()
-                        : order.getStatus();
-
-        String newTrackingNo = order.getTrackingNo();
-
-        if (request.getTrackingNo() != null) {
-            newTrackingNo =
-                    request.getTrackingNo().isBlank()
-                            ? null
-                            : request.getTrackingNo().trim();
-        }
-
-        Long requestedDeliveryPersonId =
-                request.getDeliveryPersonId();
-
-        Long existingDeliveryPersonId =
-                order.getDeliveryPersonId();
-
-        // Do not allow the assigned delivery person to be changed
-        if (requestedDeliveryPersonId != null &&
-                existingDeliveryPersonId != null &&
-                !Objects.equals(
-                        requestedDeliveryPersonId,
-                        existingDeliveryPersonId
-                )) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Delivery person cannot be changed after assignment"
-            );
-        }
-
-        // True only when this order has no driver and a driver is selected
-        boolean assigningDeliveryPerson =
-                requestedDeliveryPersonId != null &&
-                        existingDeliveryPersonId == null;
-
-        if (assigningDeliveryPerson) {
-            if (newTrackingNo == null) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Tracking number is required when assigning a delivery person"
-                );
-            }
-
-            if (newStatus != OrderStatus.PACKED) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Status must be PACKED when assigning a delivery person"
-                );
-            }
-        }
-
-        order.setStatus(newStatus);
-        order.setTrackingNo(newTrackingNo);
-
-        // Assign only when this is a new assignment
-        if (assigningDeliveryPerson) {
-            order.setDeliveryPersonId(
-                    requestedDeliveryPersonId
-            );
-        }
-
-        if (newStatus == OrderStatus.DELIVERED &&
-                order.getDeliveredAt() == null) {
-            order.setDeliveredAt(LocalDateTime.now());
-        }
-
-        Order updatedOrder = orderRepository.save(order);
-
-        // Notify only for a new delivery-person assignment
-        if (assigningDeliveryPerson) {
-            pushNotificationService.notifyJobAssigned(
-                    updatedOrder
-            );
-        }
-
-        return toDeliveryOrderDto(updatedOrder);
-    }
-
-    @Transactional(readOnly = true)
-    public List<DeliveryOrderDto> getDeliveryOrders() {
-        return orderRepository.findAll(
-                        Sort.by(Sort.Direction.DESC, "orderDate")
-                )
-                .stream()
-                .map(this::toDeliveryOrderDto)
-                .toList();
-    }
 
     private DeliveryOrderDto toDeliveryOrderDto(
             Order order
@@ -554,6 +249,363 @@ public class OrderService {
                 order.getDeliveryPersonId(),
                 order.getDeliveredAt(),
                 order.getDeliveryProofKey()
+        );
+    }
+    // ------------------------------------------------
+    // Delivery mobile application
+    // ------------------------------------------------
+
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getAssignedOrders(
+            Long deliveryPersonId
+    ) {
+        return orderRepository
+                .findByDeliveryPersonId(
+                        deliveryPersonId
+                )
+                .stream()
+                .map(this::toOrderResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getInProgressOrders(
+            Long deliveryPersonId
+    ) {
+        return orderRepository
+                .findByDeliveryPersonIdAndStatusIn(
+                        deliveryPersonId,
+                        List.of(
+                                OrderStatus.PACKED,
+                                OrderStatus.PICKED_UP
+                        )
+                )
+                .stream()
+                .map(this::toOrderResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getCompletedOrders(
+            Long deliveryPersonId
+    ) {
+        return orderRepository
+                .findByDeliveryPersonIdAndStatus(
+                        deliveryPersonId,
+                        OrderStatus.DELIVERED
+                )
+                .stream()
+                .map(this::toOrderResponse)
+                .toList();
+    }
+
+    @Transactional
+    public OrderResponse pickupParcel(
+            String trackingNo,
+            Long deliveryPersonId
+    ) {
+        Order order = orderRepository
+                .findByTrackingNoAndDeliveryPersonId(
+                        trackingNo,
+                        deliveryPersonId
+                )
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Order not found or not assigned " +
+                                        "to this delivery person"
+                        )
+                );
+
+        if (order.getStatus() !=
+                OrderStatus.PACKED) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Only PACKED orders can be picked up"
+            );
+        }
+
+        order.setStatus(
+                OrderStatus.PICKED_UP
+        );
+
+        Order updatedOrder =
+                orderRepository.save(order);
+
+        return toOrderResponse(updatedOrder);
+    }
+
+    @Transactional
+    public OrderResponse deliveredParcel(
+            String trackingNo,
+            Long deliveryPersonId
+    ) {
+        Order order = orderRepository
+                .findByTrackingNoAndDeliveryPersonId(
+                        trackingNo,
+                        deliveryPersonId
+                )
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Order not found or not assigned " +
+                                        "to this delivery person"
+                        )
+                );
+
+        if (order.getStatus() !=
+                OrderStatus.PICKED_UP) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Only PICKED_UP orders can be delivered"
+            );
+        }
+
+        order.setStatus(
+                OrderStatus.DELIVERED
+        );
+
+        order.setDeliveredAt(
+                LocalDateTime.now()
+        );
+
+        Order updatedOrder =
+                orderRepository.save(order);
+
+        return toOrderResponse(updatedOrder);
+    }
+
+    @Transactional(readOnly = true)
+    public OrderResponse
+    searchAssignedOrderByTrackingNo(
+            String trackingNo,
+            Long deliveryPersonId
+    ) {
+        Order order = orderRepository
+                .findByTrackingNoAndDeliveryPersonId(
+                        trackingNo,
+                        deliveryPersonId
+                )
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Order not found or not assigned"
+                        )
+                );
+
+        return toOrderResponse(order);
+    }
+
+    @Transactional
+    public void confirmDeliveryProof(
+            String trackingNo,
+            String fileKey
+    ) {
+        Order order = orderRepository
+                .findByTrackingNo(trackingNo)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Order not found"
+                        )
+                );
+
+        if (fileKey == null ||
+                fileKey.isBlank()) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Delivery proof file key is required"
+            );
+        }
+
+        if (order.getStatus() !=
+                OrderStatus.PICKED_UP) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Only PICKED_UP orders can be delivered"
+            );
+        }
+
+        order.setDeliveryProofKey(fileKey);
+        order.setStatus(OrderStatus.DELIVERED);
+        order.setDeliveredAt(
+                LocalDateTime.now()
+        );
+
+        orderRepository.save(order);
+    }
+
+    @Transactional
+    public OrderResponse assignOrder(
+            String trackingNo,
+            Long deliveryPersonId
+    ) {
+        Order order = orderRepository
+                .findByTrackingNo(trackingNo)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Order not found"
+                        )
+                );
+
+        order.setDeliveryPersonId(
+                deliveryPersonId
+        );
+
+        Order updatedOrder =
+                orderRepository.save(order);
+
+        return toOrderResponse(updatedOrder);
+    }
+
+    // ------------------------------------------------
+    // Merchant delivery management
+    // ------------------------------------------------
+
+    @Transactional
+    public DeliveryOrderDto updateDeliveryDetails(
+            Long orderId,
+            UpdateDeliveryRequest request
+    ) {
+        Order order = orderRepository
+                .findById(orderId)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Order not found"
+                        )
+                );
+
+        OrderStatus newStatus =
+                request.getStatus() != null
+                        ? request.getStatus()
+                        : order.getStatus();
+
+        String newTrackingNo =
+                order.getTrackingNo();
+
+        if (request.getTrackingNo() != null) {
+            newTrackingNo =
+                    request
+                            .getTrackingNo()
+                            .isBlank()
+                            ? null
+                            : request
+                            .getTrackingNo()
+                            .trim();
+        }
+
+        Long requestedDeliveryPersonId =
+                request.getDeliveryPersonId();
+
+        Long existingDeliveryPersonId =
+                order.getDeliveryPersonId();
+
+        if (requestedDeliveryPersonId != null &&
+                existingDeliveryPersonId != null &&
+                !Objects.equals(
+                        requestedDeliveryPersonId,
+                        existingDeliveryPersonId
+                )) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Delivery person cannot be changed " +
+                            "after assignment"
+            );
+        }
+
+        boolean assigningDeliveryPerson =
+                requestedDeliveryPersonId != null &&
+                        existingDeliveryPersonId == null;
+
+        if (assigningDeliveryPerson) {
+            if (newTrackingNo == null) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Tracking number is required " +
+                                "when assigning a delivery person"
+                );
+            }
+
+            if (newStatus != OrderStatus.PACKED) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Status must be PACKED when " +
+                                "assigning a delivery person"
+                );
+            }
+        }
+
+        order.setStatus(newStatus);
+        order.setTrackingNo(newTrackingNo);
+
+        if (assigningDeliveryPerson) {
+            order.setDeliveryPersonId(
+                    requestedDeliveryPersonId
+            );
+        }
+
+        if (newStatus == OrderStatus.DELIVERED &&
+                order.getDeliveredAt() == null) {
+
+            order.setDeliveredAt(
+                    LocalDateTime.now()
+            );
+        }
+
+        Order updatedOrder =
+                orderRepository.save(order);
+
+        if (assigningDeliveryPerson) {
+            pushNotificationService
+                    .notifyJobAssigned(
+                            updatedOrder
+                    );
+        }
+
+        return toDeliveryOrderDto(updatedOrder);
+    }
+
+    @Transactional(readOnly = true)
+    public List<DeliveryOrderDto>
+    getDeliveryOrders() {
+
+        return orderRepository
+                .findAll(
+                        Sort.by(
+                                Sort.Direction.DESC,
+                                "orderDate"
+                        )
+                )
+                .stream()
+                .map(this::toDeliveryOrderDto)
+                .toList();
+    }
+
+    // ------------------------------------------------
+    // DTO mapping
+    // ------------------------------------------------
+
+    private OrderResponse toOrderResponse(
+            Order order
+    ) {
+        return new OrderResponse(
+                order.getId(),
+                order.getTrackingNo(),
+                order.getDeliveryPersonId(),
+                order.getStatus(),
+                order.getFirstName(),
+                order.getLastName(),
+                order.getPhoneNumber(),
+                order.getShippingAddress(),
+                order.getDeliveryProofKey(),
+                order.getDeliveredAt()
         );
     }
 }

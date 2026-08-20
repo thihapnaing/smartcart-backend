@@ -45,21 +45,47 @@ public class OrderController {
     }
 
     // for delivery app
+// ------------------------------------------------
+    // Android delivery application
+    // ------------------------------------------------
+    // ------------------------------------------------
+// Merchant delivery management
+// ------------------------------------------------
+
     @GetMapping(
             value = "/orders",
             produces = MediaType.APPLICATION_JSON_VALUE
     )
-    public ResponseEntity<List<DeliveryOrderDto>> getDeliveryOrders() {
-        return ResponseEntity.ok(
-                orderService.getDeliveryOrders()
-        );
+    public ResponseEntity<List<DeliveryOrderDto>>
+    getDeliveryOrders() {
+
+        List<DeliveryOrderDto> orders =
+                orderService.getDeliveryOrders();
+
+        return ResponseEntity.ok(orders);
+    }
+
+    @PatchMapping("/{orderId}/delivery-details")
+    public ResponseEntity<DeliveryOrderDto>
+    updateDeliveryDetails(
+            @PathVariable Long orderId,
+            @RequestBody UpdateDeliveryRequest request
+    ) {
+        DeliveryOrderDto updatedOrder =
+                orderService.updateDeliveryDetails(
+                        orderId,
+                        request
+                );
+
+        return ResponseEntity.ok(updatedOrder);
     }
 
     @GetMapping("/assigned/{deliveryPersonId}")
-    public ResponseEntity<List<Order>> getAssignedOrders(
+    public ResponseEntity<List<OrderResponse>>
+    getAssignedOrders(
             @PathVariable Long deliveryPersonId
     ) {
-        List<Order> orders =
+        List<OrderResponse> orders =
                 orderService.getAssignedOrders(
                         deliveryPersonId
                 );
@@ -68,47 +94,53 @@ public class OrderController {
     }
 
     @GetMapping("/in-progress/{deliveryPersonId}")
-    public ResponseEntity<List<DeliveryOrderDto>>getInProgressOrders(
+    public ResponseEntity<List<OrderResponse>>
+    getInProgressOrders(
             @PathVariable Long deliveryPersonId
     ) {
-        return ResponseEntity.ok(
+        List<OrderResponse> orders =
                 orderService.getInProgressOrders(
                         deliveryPersonId
-                )
-        );
+                );
+
+        return ResponseEntity.ok(orders);
     }
 
     @GetMapping("/completed/{deliveryPersonId}")
-    public ResponseEntity<List<DeliveryOrderDto>> getCompletedOrders(
+    public ResponseEntity<List<OrderResponse>>
+    getCompletedOrders(
             @PathVariable Long deliveryPersonId
     ) {
-        return ResponseEntity.ok(
+        List<OrderResponse> orders =
                 orderService.getCompletedOrders(
                         deliveryPersonId
-                )
-        );
+                );
+
+        return ResponseEntity.ok(orders);
     }
 
     @PatchMapping("/pickup")
-    public ResponseEntity<Order> confirmPickup(
+    public ResponseEntity<OrderResponse> pickupOrder(
             @RequestBody OrderRequest request
     ) {
-        Order updatedOrder = orderService.pickupParcel(
-                request.getTrackingNo(),
-                request.getDeliveryPersonId()
-        );
+        OrderResponse updatedOrder =
+                orderService.pickupParcel(
+                        request.getTrackingNo(),
+                        request.getDeliveryPersonId()
+                );
 
         return ResponseEntity.ok(updatedOrder);
     }
 
     @PatchMapping("/delivered")
-    public ResponseEntity<Order> confirmDelivered(
+    public ResponseEntity<OrderResponse> confirmDelivered(
             @RequestBody OrderRequest request
     ) {
-        Order updatedOrder = orderService.deliveredParcel(
-                request.getTrackingNo(),
-                request.getDeliveryPersonId()
-        );
+        OrderResponse updatedOrder =
+                orderService.deliveredParcel(
+                        request.getTrackingNo(),
+                        request.getDeliveryPersonId()
+                );
 
         return ResponseEntity.ok(updatedOrder);
     }
@@ -120,80 +152,18 @@ public class OrderController {
             @PathVariable String trackingNo,
             @PathVariable Long deliveryPersonId
     ) {
-        Order order =
+        OrderResponse order =
                 orderService
                         .searchAssignedOrderByTrackingNo(
                                 trackingNo,
                                 deliveryPersonId
                         );
 
-        OrderResponse response =
-                new OrderResponse(
-                        order.getId(),
-                        order.getTrackingNo(),
-                        order.getDeliveryPersonId(),
-                        order.getStatus(),
-                        order.getFirstName(),
-                        order.getLastName(),
-                        order.getPhoneNumber(),
-                        order.getShippingAddress(),
-                        order.getDeliveryProofKey(),
-                        order.getDeliveredAt()
-                );
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(order);
     }
 
-//    @GetMapping(
-//            "/search/{trackingNo}/{deliveryPersonId}"
-//    )
-//    public ResponseEntity<Order> searchOrder(
-//            @PathVariable String trackingNo,
-//            @PathVariable Long deliveryPersonId
-//    ) {
-//        Order order =
-//                orderService.searchAssignedOrderByTrackingNo(
-//                        trackingNo,
-//                        deliveryPersonId
-//                );
-//
-//        return ResponseEntity.ok(order);
-//    }
-
-//    @PostMapping("/{trackingNo}/proof/confirm")
-//    public ResponseEntity<Order> confirmDeliveryProof(
-//            @PathVariable("trackingNo") String trackingNo,
-//            @RequestBody ConfirmDeliveryRequest request
-//    ) {
-//        if (request.getFileKey() == null ||
-//                request.getFileKey().isBlank()) {
-//            return ResponseEntity.badRequest().build();
-//        }
-//
-//        Order updatedOrder =
-//                orderService.confirmDeliveryProof(
-//                        trackingNo,
-//                        request.getFileKey()
-//                );
-//
-//        return ResponseEntity.ok(updatedOrder);
-//    }
-
-//    @PostMapping("/{trackingNo}/proof/confirm")
-//    public ResponseEntity<Void> confirmDeliveryProof(
-//            @PathVariable String trackingNo,
-//            @RequestBody ConfirmDeliveryRequest request
-//    ) {
-//        orderService.confirmDeliveryProof(
-//                trackingNo,
-//                request.getFileKey()
-//        );
-//
-//        return ResponseEntity
-//                .noContent()
-//                .build();
-//    }
-
+    // Save the S3 file key and mark the order delivered.
+    // Android expects Response<Unit>, so return HTTP 204.
     @PostMapping("/{trackingNo}/proof/confirm")
     public ResponseEntity<Void> confirmDeliveryProof(
             @PathVariable String trackingNo,
@@ -204,33 +174,22 @@ public class OrderController {
                 request.getFileKey()
         );
 
-        return ResponseEntity.noContent().build();
+        return ResponseEntity
+                .noContent()
+                .build();
     }
 
     @PutMapping(
             "/assign/{trackingNo}/{deliveryPersonId}"
     )
-    public ResponseEntity<Order> assignOrder(
+    public ResponseEntity<OrderResponse> assignOrder(
             @PathVariable String trackingNo,
             @PathVariable Long deliveryPersonId
     ) {
-        return ResponseEntity.ok(
+        OrderResponse updatedOrder =
                 orderService.assignOrder(
                         trackingNo,
                         deliveryPersonId
-                )
-        );
-    }
-
-    @PatchMapping("/{orderId}/delivery-details")
-    public ResponseEntity<DeliveryOrderDto> updateDeliveryDetails(
-            @PathVariable Long orderId,
-            @RequestBody UpdateDeliveryRequest request
-    ) {
-        DeliveryOrderDto updatedOrder =
-                orderService.updateDeliveryDetails(
-                        orderId,
-                        request
                 );
 
         return ResponseEntity.ok(updatedOrder);

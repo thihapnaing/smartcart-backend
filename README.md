@@ -5,6 +5,20 @@ recommendations and chat. It exposes the REST API consumed by the SmartCart web 
 persists data to MySQL, and delegates AI features (recommendations, vector search, chat) to
 the companion [`smartcart-ai-service`](./smartcart-ai-service) Python microservice.
 
+## Demo
+
+**URL** 
+- *Customer/Merchant:* http://localhost:4200/login
+- *Admin:* http://localhost:4200/admin
+
+| Role | Email | Password |
+|---|---|---|
+| Merchant | `merchant@smartcart.demo` | `password123` |
+| Customer | `grace@smartcart.demo` | `password123` |
+| Admin | `admin@smartcart.demo` | `password123` |
+
+> Demo accounts only, seeded via `data.sql`.
+
 ## Features
 
 - **Auth** — JWT-based authentication and authorization (`AuthController`, `security/`)
@@ -117,4 +131,95 @@ docker run -p 8080:8080 --env SPRING_DATASOURCE_PASSWORD=*** smartcart-backend
 - `terraform/` — Terraform for the AWS EKS/ECR/VPC infrastructure (see `terraform/README.md`)
 - `.github/workflows/backend.yml` — CI pipeline (build, test, SonarCloud, image scan/build)
 
+# SmartCart AI Service
+
+Python/FastAPI microservice powering SmartCart's AI features: the AI shopping assistant chat
+(LangGraph + MCP tool-calling over OpenAI), product recommendations, image search (CNN), and
+vector search. Called internally by the [`smartcart-backend`](../) Spring Boot API — it is never
+exposed directly to the browser.
+
+## Features
+
+- **Chat assistant** — agentic tool-calling loop over OpenAI, with tools exposed via MCP (`services/agent_service.py`, `services/workflow.py`, `smartcart_mcp_server.py`)
+- **Recommendations** — product recommendations (`services/recommendation_service.py`, `routers/recommendation_router.py`)
+- **Image search** — CNN-based visual product search (`services/cnn_service.py`, `routers/image_search.py`)
+- **Vector search** — ChromaDB-backed product catalog search (`services/vector_store.py`)
+- **Trends & promotions** — supporting endpoints (`routers/trend_router.py`, `routers/promotions_router.py`)
+
+## Tech Stack
+
+- FastAPI, Uvicorn
+- LangGraph, LangChain, OpenAI SDK
+- MCP (`mcp`, `langchain-mcp-adapters`) — tool server over stdio
+- ChromaDB — vector database
+- TensorFlow, OpenCV, scikit-learn — CNN image search
+- pytest — testing
+
+## Project Structure
+
+```
+routers/                  # FastAPI route handlers (chat, image_search, recommendation, trend, promotions)
+services/                 # Business logic (agent_service, workflow, cnn_service, recommendation_service, smartcart_tools, vector_store)
+smartcart_mcp_server.py   # MCP tool server (search_products, get_order_history, get_spending_summary, get_cart)
+prompts/                  # System prompt(s) for the chat agent
+tests/                    # pytest unit tests
+main.py                   # FastAPI app entrypoint
+```
+
+## Prerequisites
+
+- Python 3.10+
+- A running [`smartcart-backend`](../) instance (default `http://localhost:8080`) — the chat/recommendation tools call back into it via `/internal/tools/**`
+
+## Configuration
+
+### 1. Get an API key
+
+This service needs an LLM API key to answer chat/recommendation requests. Use one of:
+
+- **OpenAI** — go to [platform.openai.com](https://platform.openai.com) → API keys → "Create new secret key." Requires a payment method on file (not covered by a ChatGPT Plus subscription).
+- **OpenRouter** (alternative, has free-tier models) — go to [openrouter.ai](https://openrouter.ai) and create a key.
+- **TAVILY_API_KEY** (alternative, has free-tier models) — go to [Travily](https://www.tavily.com/) and create a key.
+
+### 2. Set environment variables
+
+Copy `.env.example` to `.env` (already gitignored — never commit real keys):
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Description |
+|---|---|
+| `OPENAI_API_KEY` | Direct OpenAI key. Set this **or** `OPENROUTER_API_KEY`, not both. |
+| `OPENROUTER_API_KEY` | OpenRouter key, used instead of OpenAI — `services/agent_service.py` prefers this if both are set. |
+| `SMARTCART_BACKEND_URL` | Base URL of the Spring Boot backend (default `http://localhost:8080`). |
+| `PORT` | Port this FastAPI service listens on (default `8001`). |
+
+## Running Locally
+
+```powershell
+python -m venv .venv
+.venv\Scripts\activate          # Windows; use `source .venv/bin/activate` on macOS/Linux
+pip install -r requirements.txt
+python main.py
+```
+
+Runs on `http://localhost:8001` with auto-reload. Verify with `GET /api/health` →
+`{"status": "ok", "service": "smartcart-ai-service"}`.
+
+**Note (Windows):** `requirements.txt` includes `pywin32` (required by the MCP stdio transport)
+and `pip-system-certs` (fixes `SSL: CERTIFICATE_VERIFY_FAILED` errors caused by antivirus HTTPS
+inspection, e.g. Norton) — both install automatically with the command above.
+
+## Testing
+
+```bash
+pytest
+```
+
+## Related Repositories
+
+- [`smartcart-backend`](../) — Spring Boot REST API (this service's caller)
+- `smartcart-web` — Angular frontend
 

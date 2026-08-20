@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -314,11 +315,12 @@ class ProductServiceTest {
 
         when(productRepository.save(any(Product.class))).thenAnswer(inv -> inv.getArgument(0));
 
+        // lowercase / mixed-case on purpose — proves mergeVariants normalizes before comparing
         VariantRequest requestVariant1 = new VariantRequest();
-        requestVariant1.setSize("M");
+        requestVariant1.setSize("m");
         requestVariant1.setStock(11);
         VariantRequest requestVariant2 = new VariantRequest();
-        requestVariant2.setSize("L");
+        requestVariant2.setSize("l");
         requestVariant2.setStock(10);
 
         ProductRequest request = ProductRequest.builder()
@@ -340,6 +342,41 @@ class ProductServiceTest {
         assertEquals(11, stockBySize.get("M"));
         assertEquals(10, stockBySize.get("L"));
         assertNull(stockBySize.get("S"));
+    }
+
+    @Test
+    void updateProduct_rejectsDuplicateSizesInRequest() {
+        User merchant = mock(User.class);
+        when(merchant.getId()).thenReturn(1L);
+        when(currentUserProvider.getCurrentMerchant()).thenReturn(merchant);
+
+        Product existingProduct = new Product();
+        existingProduct.setMerchant(merchant);
+        existingProduct.setVariants(new ArrayList<>());
+
+        when(productRepository.findById(1L)).thenReturn(Optional.of(existingProduct));
+
+        VariantRequest requestVariant1 = new VariantRequest();
+        requestVariant1.setSize("L");
+        requestVariant1.setStock(10);
+        VariantRequest requestVariant2 = new VariantRequest();
+        requestVariant2.setSize("l");
+        requestVariant2.setStock(5);
+
+        ProductRequest request = ProductRequest.builder()
+                .name("White Tee")
+                .description("soft and made of cotton")
+                .price(BigDecimal.valueOf(1))
+                .gender(Gender.MEN)
+                .categoryId(1L)
+                .status(ProductStatus.ACTIVE)
+                .variants(List.of(requestVariant1, requestVariant2))
+                .build();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> productService.updateProduct(1L, request));
+
+        verify(productRepository, never()).save(any());
     }
 
     @Test

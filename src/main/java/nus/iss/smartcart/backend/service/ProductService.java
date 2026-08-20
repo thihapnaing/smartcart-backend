@@ -11,8 +11,10 @@ import nus.iss.smartcart.backend.security.CurrentUserProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -165,14 +167,23 @@ public class ProductService {
     }
 
     private void mergeVariants(Product product, List<VariantRequest> variants) {
+        Set<String> seenSizes = new HashSet<>();
+        for (VariantRequest v : variants) {
+            String normalized = v.getSize().trim().toUpperCase();
+            if (!seenSizes.add(normalized)) {
+                throw new IllegalArgumentException("Duplicate variant size in request: " + normalized);
+            }
+        }
+
         Map<String, ProductVariant> existingBySize = product.getVariants().stream()
                 .collect(Collectors.toMap(ProductVariant::getSize, variant -> variant));
 
-        for(VariantRequest updatedVariant : variants) {
-            if(existingBySize.containsKey(updatedVariant.getSize())) {
-                ProductVariant existing = existingBySize.get(updatedVariant.getSize());
+        for (VariantRequest updatedVariant : variants) {
+            String normalized = updatedVariant.getSize().trim().toUpperCase();
+            if (existingBySize.containsKey(normalized)) {
+                ProductVariant existing = existingBySize.get(normalized);
                 existing.setStock(updatedVariant.getStock());
-                existingBySize.remove(updatedVariant.getSize());
+                existingBySize.remove(normalized);
             } else {
                 ProductVariant newVariant = new ProductVariant();
                 newVariant.setSize(updatedVariant.getSize());

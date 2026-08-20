@@ -42,4 +42,16 @@ public class ProductVariant {
     public Product getProduct() {
         return product;
     }
+
+    public void setSize(String size) {
+        this.size = size == null ? null : size.trim().toUpperCase();
+    }
+
+    @PrePersist
+    @PreUpdate
+    private void normalizeSize() {
+        if (size != null) {
+            size = size.trim().toUpperCase();
+        }
+    }
 }

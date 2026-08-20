@@ -42,6 +42,7 @@ public class ImageSearchService {
                 .build();
     }
 
+
     // =========================================================
     // IMAGE SEARCH
     // =========================================================
@@ -74,6 +75,7 @@ public class ImageSearchService {
                             ? originalFilename
                             : "image.jpg";
 
+
             // =================================================
             // CREATE IMAGE RESOURCE
             // =================================================
@@ -88,6 +90,7 @@ public class ImageSearchService {
                             return filename;
                         }
                     };
+
 
             // =================================================
             // GET CONTENT TYPE
@@ -112,6 +115,7 @@ public class ImageSearchService {
                         );
             }
 
+
             // =================================================
             // BUILD MULTIPART REQUEST
             // =================================================
@@ -125,6 +129,7 @@ public class ImageSearchService {
                     )
                     .contentType(imageMediaType)
                     .filename(filename);
+
 
             // =================================================
             // SEND IMAGE TO PYTHON AI SERVICE
@@ -147,6 +152,7 @@ public class ImageSearchService {
                             )
                             .block();
 
+
             // =================================================
             // CHECK AI RESPONSE
             // =================================================
@@ -159,6 +165,7 @@ public class ImageSearchService {
                 );
             }
 
+
             // =================================================
             // SEARCH MYSQL
             // =================================================
@@ -167,6 +174,7 @@ public class ImageSearchService {
                     searchProductsFromPrediction(
                             aiResponse
                     );
+
 
             // =================================================
             // ADD PRODUCTS TO RESPONSE
@@ -177,6 +185,7 @@ public class ImageSearchService {
             );
 
             return aiResponse;
+
 
         } catch (Exception e) {
 
@@ -192,6 +201,7 @@ public class ImageSearchService {
         }
     }
 
+
     // =========================================================
     // SEARCH MYSQL USING AI PREDICTION
     // =========================================================
@@ -199,6 +209,7 @@ public class ImageSearchService {
     private List<ProductSearchResult>
     searchProductsFromPrediction(
             ImageSearchResponse aiResponse) {
+
 
         // =====================================================
         // CONVERT GENDER
@@ -227,6 +238,78 @@ public class ImageSearchService {
             );
         }
 
+
+        // =====================================================
+        // CONVERT AI CATEGORY TO DATABASE CATEGORY
+        // =====================================================
+
+        String aiCategory =
+                aiResponse.getCategory();
+
+        String databaseCategory;
+
+        if ("shirt".equalsIgnoreCase(aiCategory)
+                || "shirts".equalsIgnoreCase(aiCategory)
+                || "tshirt".equalsIgnoreCase(aiCategory)
+                || "t-shirts".equalsIgnoreCase(aiCategory)
+                || "t-shirt".equalsIgnoreCase(aiCategory)
+                || "top".equalsIgnoreCase(aiCategory)
+                || "tops".equalsIgnoreCase(aiCategory)) {
+
+            databaseCategory = "Tops";
+
+        } else if ("pants".equalsIgnoreCase(aiCategory)
+                || "pant".equalsIgnoreCase(aiCategory)
+                || "trousers".equalsIgnoreCase(aiCategory)
+                || "bottom".equalsIgnoreCase(aiCategory)
+                || "bottoms".equalsIgnoreCase(aiCategory)) {
+
+            databaseCategory = "Bottoms";
+
+        } else if ("shoe".equalsIgnoreCase(aiCategory)
+                || "shoes".equalsIgnoreCase(aiCategory)) {
+
+            databaseCategory = "Shoes";
+
+        } else {
+
+            databaseCategory = aiCategory;
+        }
+
+
+        // =====================================================
+        // DEBUG LOG
+        // =====================================================
+
+        System.out.println(
+                "========== IMAGE SEARCH FILTER =========="
+        );
+
+        System.out.println(
+                "AI Gender: " + aiGender
+        );
+
+        System.out.println(
+                "Database Gender: " + gender
+        );
+
+        System.out.println(
+                "AI Color: " + aiResponse.getColor()
+        );
+
+        System.out.println(
+                "AI Category: " + aiCategory
+        );
+
+        System.out.println(
+                "Database Category: " + databaseCategory
+        );
+
+        System.out.println(
+                "Status: " + ProductStatus.ACTIVE
+        );
+
+
         // =====================================================
         // SEARCH PRODUCTS
         // =====================================================
@@ -235,9 +318,20 @@ public class ImageSearchService {
                 productRepository.searchByImageAttributes(
                         gender,
                         aiResponse.getColor(),
-                        aiResponse.getCategory(),
+                        databaseCategory,
                         ProductStatus.ACTIVE
                 );
+
+
+        // =====================================================
+        // DEBUG RESULT
+        // =====================================================
+
+        System.out.println(
+                "Products found: "
+                        + products.size()
+        );
+
 
         // =====================================================
         // CONVERT PRODUCTS TO SEARCH RESULTS

@@ -72,7 +72,7 @@ public class RecommendationOrchestratorService {
         CustomerProfileDTO profile = buildCustomerProfile(userId);
 
         RecommendationRequestDTO requestPayload = new RecommendationRequestDTO(
-                5,
+                7,
                 "auto",
                 profile
         );

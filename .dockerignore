@@ -1,0 +1,15 @@
+# This file only affects the root Dockerfile (backend build context).
+target/
+.idea/
+.git/
+.gitignore
+.mvn/
+*.md
+HELP.md
+README.md
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# Nested service has its own Dockerfile/context and isn't needed to build the backend
+smartcart-ai-service/

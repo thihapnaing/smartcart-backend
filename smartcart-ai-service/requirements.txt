@@ -1,0 +1,91 @@
+# ==========================
+# AI Framework
+# ==========================
+
+tensorflow>=2.20.0
+numpy>=2.2.6
+pandas>=2.3.0
+scikit-learn>=1.7.1
+opencv-python>=4.12.0
+Pillow>=11.3.0
+matplotlib>=3.10.0
+joblib>=1.5.0
+
+# ==========================
+# FastAPI
+# ==========================
+
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.20
+python-dotenv>=1.0.1
+requests>=2.32.0
+
+
+# Vector database & data processing for Recommendation service
+chromadb>=0.4.0
+pandas>=2.0.0
+pydantic>=2.0.0
+
+# Explicit floors for chromadb's transitive deps, to clear Trivy CVEs
+# (GHSA-6v7p-g79w-8964, CVE-2025-47273) that the versions chromadb itself
+# resolves to are otherwise vulnerable to.
+msgpack>=1.2.1
+setuptools>=78.1.1
+
+# ==========================
+# OpenAI / LangChain
+# ==========================
+
+openai>=1.51.0
+langgraph>=0.2.0
+langchain-core==1.5.3
+langchain-openai==1.4.1
+langchain-mcp-adapters>=0.3,<0.4
+langchain-community
+
+# Windows-only: mcp.server.stdio imports mcp.os.win32.utilities, which needs
+# pywintypes (part of pywin32) to talk to the stdio child process on Windows.
+
+# ==========================
+# MCP
+# ==========================
+
+mcp>=1.6,<2.0
+pywin32>=306; sys_platform == "win32"
+
+# Windows-only: mcp.server.stdio imports mcp.os.win32.utilities, which needs
+# pywintypes (part of pywin32) to talk to the stdio child process on Windows.
+
+# Pinned deliberately: mcp>=2.0 removed mcp.shared.context.RequestContext,
+# which langchain-mcp-adapters 0.1.x/0.2.x import - breaks at startup with
+# "ImportError: cannot import name 'RequestContext'". Verified working set:
+# mcp 1.29.0 + langchain-mcp-adapters 0.3.1 + langchain-core 1.5.3 +
+# langgraph 1.2.10 + langchain-openai 1.4.1.
+
+# ==========================
+# SSL Fix (Windows)
+# ==========================
+
+pip-system-certs>=4.0
+
+
+mcp>=1.6,<2.0
+langchain-mcp-adapters>=0.3,<0.4
+
+
+
+# Fixes "SSL: CERTIFICATE_VERIFY_FAILED - unable to get local issuer
+# certificate" when calling api.openai.com. Cause: security software (e.g.
+# Norton) doing HTTPS inspection injects a locally-trusted root CA that
+# Windows trusts but Python's bundled certifi bundle does not. This patches
+# Python's ssl module at import time to use the OS (Windows) certificate
+# store instead of certifi, so anything Windows already trusts, Python does
+# too. Just needs to be installed - no code changes required to use it.
+pip-system-certs>=4.0
+
+# ==========================
+# Test
+# ==========================
+
+pytest

@@ -1,0 +1,83 @@
+# Trivy ignore list — CVEs reviewed and accepted as non-exploitable in this
+# deployment's actual architecture. See project report for full triage notes.
+# Re-review each entry periodically in case an upstream fix becomes available.
+
+# chromadb: pre-auth RCE requires a network-exposed chromadb server.
+# This service uses chromadb.PersistentClient() (embedded mode) only —
+# no HttpClient, no separate chromadb port/service. Not reachable.
+CVE-2026-45829
+
+# glib: D-Bus introspection XML parsing. Not invoked by this Python/FastAPI service.
+CVE-2026-58016
+
+# libxml2 (AI service base image): no XML parsing in this codebase
+# (confirmed: no lxml or XML libraries in requirements.txt).
+CVE-2026-6653
+
+# perl / perl-base / Storable / perl-archive-tar: base Debian image includes
+# Perl by default; this service never invokes it (Python-only application).
+CVE-2026-13221
+CVE-2026-42496
+CVE-2026-57433
+CVE-2026-8376
+CVE-2026-42497
+CVE-2026-48962
+CVE-2026-57432
+CVE-2026-9538
+
+# gzip: buffer overflow in gzip's legacy LZH decompression path. This
+# service never shells out to gzip or decompresses untrusted .lzh/.lha
+# input; Python's own gzip module (used for standard .gz handling, if any)
+# is a separate implementation unaffected by this CVE.
+CVE-2026-41992
+
+# libacl1: symlink traversal privilege escalation via libacl (get/setfacl)
+# functions. This service never reads or modifies filesystem ACLs.
+CVE-2026-54369
+
+# glib (libglib2.0-0t64): same reasoning as CVE-2026-58016 above - present
+# only as an opencv-python/libgl1 transitive dependency. This service never
+# touches GVariant, GDateTime, GRegex, GIOChannel, GKeyFile, or GDBus APIs,
+# so these internal-glib-parsing bugs have no reachable code path here.
+CVE-2026-58010
+CVE-2026-58011
+CVE-2026-58012
+CVE-2026-58013
+CVE-2026-58014
+CVE-2026-58015
+
+# ncurses (libncursesw6/libtinfo6/ncurses-base/ncurses-bin): terminal
+# rendering buffer overflow. This service runs headless behind uvicorn with
+# no interactive TTY/PTY session, so no attacker-controlled input ever
+# reaches ncurses's escape-sequence handling.
+CVE-2025-69720
+
+# util-linux/libblkid family (bsdutils, libblkid1, liblastlog2-2,
+# libsmartcols1, libuuid1, util-linux): Debian's stable-security repo has
+# shipped a fix (2.41.5-0+deb13u1) that Trivy's DB hadn't caught up to
+# reporting as fixed as of this writing. Dockerfile now runs `apt-get
+# upgrade` in the runtime stage to pull it in - keep this entry only as a
+# fallback in case a rebuild briefly lags the mirror; remove once confirmed
+# clean across builds.
+CVE-2026-53615
+
+# openssl / libssl3t64 / openssl-provider-legacy: DoS via unbounded memory
+# growth in OpenSSL's native QUIC *server* (Listener) implementation, which
+# only triggers when an app accepts inbound QUIC connections through
+# OpenSSL's own SSL_accept()-based QUIC API. No fix is available yet
+# upstream/in Debian as of this writing (Trivy status: fix_deferred).
+# This service only ever speaks plain HTTP/TCP via uvicorn - confirmed no
+# QUIC-capable package (aioquic, qh3, etc.) is installed anywhere in the
+# image - so the vulnerable code path is never reached. Re-review once
+# Debian ships a fixed openssl package.
+CVE-2026-14456
+
+# msgpack / setuptools: not our project's dependencies (those are pinned to
+# fixed versions - msgpack 1.2.1, setuptools 78.1.1+ - in requirements.txt).
+# These findings are pip's own internal vendored copies, declared in
+# pip/_vendor/vendor.txt and used only as pip._vendor.msgpack/setuptools
+# for pip's own resolver - never imported or reachable by this service's code.
+# Confirmed present at the same pinned versions in pip 26.2.1, the latest
+# release as of this writing; will only change when pip ships a new bundle.
+GHSA-6v7p-g79w-8964
+CVE-2025-47273
